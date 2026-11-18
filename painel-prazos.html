@@ -865,10 +865,9 @@ async function startSync(){
         // banco vazio e este aparelho já tinha prazos: mantém e envia
         maybeReady(); return;
       }
-      if (snap.size || !state.demo){
-        state.pubs = remote; state.demo = false;
-        synced.pubs = Object.fromEntries(Object.entries(remote).map(([id,p]) => [id, JSON.stringify(p)]));
-      }
+      // conectada: some com os exemplos e mostra o que está no banco (mesmo que vazio)
+      state.pubs = remote; state.demo = false;
+      synced.pubs = Object.fromEntries(Object.entries(remote).map(([id,p]) => [id, JSON.stringify(p)]));
       saveLocal(); render(); maybeReady();
     }, err => showSync("Sem acesso aos dados do escritório: " + traduz(err))));
   }
@@ -878,7 +877,7 @@ async function startSync(){
     if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found") || c.includes("invalid-email")) return "e-mail ou senha incorretos.";
     if (c.includes("too-many-requests")) return "muitas tentativas. Espere alguns minutos e tente de novo.";
     if (c.includes("network")) return "sem conexão com a internet.";
-    if (c.includes("permission-denied")) return "este e-mail não tem permissão para ver os prazos do escritório.";
+    if (c.includes("permission-denied")) return `o e-mail "${auth.currentUser ? auth.currentUser.email : ""}" não está na lista de permitidos das regras do Firestore. Confira se ele está escrito igual lá (em minúsculas) e se as regras foram publicadas.`;
     return (e && e.message) || "erro desconhecido.";
   }
 
