@@ -170,6 +170,8 @@ body, body *{font-variant-numeric:lining-nums tabular-nums!important}
 #fltAdv{max-width:260px}
 button.danger{background:#9e1f34;border-color:#9e1f34;color:#fff}
 .delask{font-weight:600}
+.ctrl label.chk{display:inline-flex;align-items:center;gap:6px;font-weight:600;cursor:pointer}
+.ctrl label.chk input{width:18px;height:18px;accent-color:#9e1f34}
 /* legibilidade: todos os textos na cor principal (branco no tema escuro, preto no claro), sem itálico */
 .wk-label,.proc .autos,.tag,.tag.ex,.cal span,.cal span.c i,.day .why,.day .d,.day .n,.day .n.hot,.sum b,.sum.danger b,.sum.warn b,.sum span,.meta,.hint,.status,.group .empty,h2,h2 small,details.law,details.law summary,.timeline .steps,.row label,.notice,footer.colophon,footer.colophon span,
 .stamp,.card.late .stamp,.card.today .stamp,.card.soon .stamp,.card.done .stamp,.card.nodue .stamp{color:var(--ink)!important}
@@ -228,7 +230,7 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
       <li><b>Disponibilização → publicação:</b> a publicação considera-se feita no primeiro dia útil seguinte ao da disponibilização no Diário (Lei 11.419/2006, art. 4º, §3º; vale para o DJEN).</li>
       <li><b>Início:</b> o prazo começa no primeiro dia útil seguinte ao da publicação (art. 4º, §4º; CPC art. 224).</li>
       <li><b>Dias úteis:</b> prazos processuais cíveis contam só dias úteis (CPC art. 219), inclusive nos Juizados (Lei 9.099, art. 12-A).</li>
-      <li><b>Dias corridos:</b> use para prazos penais (CPP art. 798) e prazos materiais. Se o último dia cair em dia sem expediente, prorroga para o próximo dia útil.</li>
+      <li><b>Prazos criminais (dias corridos):</b> o painel reconhece o processo criminal pela classe processual (ação penal, inquérito, habeas corpus, execução penal, medidas protetivas etc.) e conta em dias corridos, como manda o CPP (art. 798): sábados, domingos e feriados contam; exclui-se o dia do começo e inclui-se o do vencimento; a contagem só começa em dia útil (Súmula 310 do STF); se o último dia cair em dia sem expediente, prorroga para o dia útil seguinte. De 20/12 a 20/01 o prazo fica suspenso (CPP art. 798-A), menos com <b>réu preso</b>, Maria da Penha ou medida urgente: marque "Réu preso / urgente" no cartão (o painel já marca sozinho quando o texto fala em réu preso ou medida protetiva). Em cada cartão dá para trocar entre "Cível · dias úteis" e "Criminal · dias corridos".</li>
       <li><b>Recesso:</b> de 20/12 a 20/01 os prazos ficam suspensos (CPC art. 220).</li>
       <li><b>Expediente reduzido</b> (ex.: Quarta-feira de Cinzas): conta no meio do prazo, mas não pode ser o dia de início nem de vencimento (CPC art. 224, §1º).</li>
       <li><b>Calendário do TJMS:</b> segue a Portaria TJMS nº 983/2025 (feriados de 2026) e a Lei estadual 3.056/2005. Na comarca de Campo Grande, 26/08 também não tem expediente. Suspensões avulsas (falha no sistema, ponto facultativo com fechamento do fórum) precisam ser cadastradas em Configurações. Prazo em dobro (Fazenda, Defensoria, litisconsortes com procuradores diferentes em autos físicos) deve ser lançado com o número de dias já dobrado.</li>
@@ -303,7 +305,7 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
     </div>
     <div class="row">
       <label>Prazo (dias)<input id="manDias" type="number" min="1" max="365" required></label>
-      <label>Contagem<select id="manTipo"><option value="uteis">Dias úteis</option><option value="corridos">Dias corridos</option></select></label>
+      <label>Área / contagem<select id="manTipo"><option value="uteis">Cível · dias úteis</option><option value="corridos">Criminal · dias corridos</option></select></label>
     </div>
     <label style="display:flex;flex-direction:column;gap:4px;font-size:15.5px;color:var(--muted)">Texto ou resumo da publicação
       <textarea id="manTexto" rows="5"></textarea>
@@ -355,6 +357,7 @@ function holidays(y){
   h[add(e,-2)] = {n:"Sexta-feira Santa",t:"feriado"}; h[add(e,60)] = {n:"Corpus Christi",t:"feriado"};
   if (tjms){
     for (let d=1; d<=6; d++) fx("01-0"+d,"Feriado forense TJMS (Lei 3.056/2005)");
+    for (let d=20; d<=31; d++) if (d!==25) fx("12-"+d,"Feriado forense TJMS (Lei 3.056/2005)");
     fx("08-11","Instituição dos Cursos Jurídicos (TJMS)");
   }
   if (perfil==="tjms-cg") fx("08-26","Aniversário de Campo Grande (sem expediente na comarca)");
@@ -378,34 +381,60 @@ function parseCustom(txt){
   return out;
 }
 // motivo de não ser dia útil (null = dia útil normal)
-function dayInfo(s){
+// semRecesso: réu preso, Maria da Penha e medidas urgentes não se suspendem no recesso (CPP art. 798-A)
+function dayInfo(s, semRecesso){
   const w = dow(s);
   const mo = +s.slice(5,7), da = +s.slice(8,10);
-  if ((mo===12 && da>=20) || (mo===1 && da<=20)) return {n:"Recesso forense",t:"recesso"};
+  if (!semRecesso && ((mo===12 && da>=20) || (mo===1 && da<=20))) return {n:"Recesso forense",t:"recesso"};
   if (customDays[s]) return customDays[s];
   const h = holidays(+s.slice(0,4))[s];
   if (w===0||w===6) return {n: w===0?"Domingo":"Sábado", t:"fds"};
   return h || null;
 }
 // Ponto facultativo ("pf") é tratado como dia útil por segurança: o prazo nunca fica mais longo por causa dele.
-const countsUtil = s => { const i = dayInfo(s); return !i || i.t==="reduzido" || i.t==="pf"; }; // conta no meio do prazo
-const fullUtil  = s => { const i = dayInfo(s); return !i || i.t==="pf"; };                      // pode ser início / fim
-const nextFull = s => { let d = add(s,1); while(!fullUtil(d)) d = add(d,1); return d; };
+const countsUtil = (s, sr) => { const i = dayInfo(s, sr); return !i || i.t==="reduzido" || i.t==="pf"; }; // conta no meio do prazo
+const fullUtil  = (s, sr) => { const i = dayInfo(s, sr); return !i || i.t==="pf"; };                      // pode ser início / fim
+const nextFull = (s, sr) => { let d = add(s,1); while(!fullUtil(d, sr)) d = add(d,1); return d; };
 
-function calcPrazo(disp, n, tipo){
-  const pub = nextFull(disp);
-  const inicio = nextFull(pub);
+/* Cível (uteis): CPC arts. 219, 220 e 224; Lei 11.419/2006, art. 4º, §§3º e 4º.
+   Criminal (corridos): CPP art. 798 — prazo contínuo, não se interrompe por fim de semana ou feriado;
+   exclui o dia do começo e inclui o do vencimento (§1º); se terminar em dia sem expediente, prorroga
+   para o dia útil seguinte (§3º). A contagem só começa em dia útil (Súmula 310 do STF: publicação na
+   sexta, começa na segunda). Suspende de 20/12 a 20/01 (art. 798-A), salvo réu preso, Maria da Penha
+   e medidas urgentes (semRecesso). */
+function calcPrazo(disp, n, tipo, semRecesso){
+  const sr = tipo==="corridos" && !!semRecesso;
+  const pub = nextFull(disp, sr);
+  const inicio = nextFull(pub, sr);
   const counted = [];
   let d = inicio, guard = 0;
   while (counted.length < n && guard++ < 2000){
-    const info = dayInfo(d);
-    const ok = tipo==="corridos" ? !(info && info.t==="recesso") : countsUtil(d);
+    const info = dayInfo(d, sr);
+    const ok = tipo==="corridos" ? !(info && info.t==="recesso") : countsUtil(d, sr);
     if (ok) counted.push(d);
     if (counted.length < n) d = add(d,1);
   }
   let fim = counted[counted.length-1], prorrogado = null;
-  if (!fullUtil(fim)){ prorrogado = dayInfo(fim).n; fim = nextFull(fim); }
-  return {pub, inicio, counted, fim, prorrogado};
+  if (!fullUtil(fim, sr)){ prorrogado = dayInfo(fim, sr).n; fim = nextFull(fim, sr); }
+  return {pub, inicio, counted, fim, prorrogado, semRecesso: sr};
+}
+
+/* ---- área do processo (cível x criminal), pela classe processual do DJEN ---- */
+const RX_CRIM_CLASSE = /penal|criminal|inqu[eé]rito|circunstanciado|flagrante|pris[aã]o|habeas corpus|maria da penha|protetivas|sentido estrito|execu[cç][aã]o da pena|coisas apreendidas|liberdade provis[oó]ria|cautelares? (?:criminal|penal)|den[uú]ncia|queixa-crime|crime/i;
+const RX_URGENTE = /r[ée]us? pres[oa]s?|pres[oa] preventiva|segregad|custodiad|maria da penha|11\.340|medidas? protetivas?/i;
+function isCriminal(o){
+  if (o.classe) return RX_CRIM_CLASSE.test(o.classe);
+  // sem classe: usa o órgão só se for vara exclusivamente criminal
+  return /criminal|j[uú]ri|execu[cç][oõ]es penais/i.test(o.orgao||"") && !/c[ií]vel|fam[ií]lia/i.test(o.orgao||"");
+}
+// tipo de contagem efetivo: o que a advogada escolheu, ou o detectado
+function tipoDe(p){
+  if (p.tipoManual || p.origemDados==="Manual") return p.tipo;
+  return isCriminal(p) || (p.det && p.det.tipo==="corridos") ? "corridos" : "uteis";
+}
+function urgenteDe(p){
+  if (typeof p.urgente === "boolean") return p.urgente;
+  return RX_URGENTE.test((p.classe||"") + " " + (p.texto||""));
 }
 
 /* ================= detecção do prazo no texto ================= */
@@ -452,7 +481,7 @@ function htmlToText(html){
 function makePub(o){
   const det = detectPrazo(o.texto);
   const padrao = +state.settings.padrao || null;
-  const criminal = /penal|criminal|inqu[eé]rito|crime/i.test((o.classe||"")+" "+(o.orgao||""));
+  const criminal = isCriminal(o);
   return Object.assign({
     prazoDias: det && !det.horas ? det.dias : padrao,
     tipo: criminal || (det && det.tipo==="corridos") ? "corridos" : "uteis",
@@ -557,8 +586,10 @@ function banner(msg, kind){
 const weekStart = s => add(s, -((dow(s)+6)%7)); // segunda-feira
 
 function enrich(p){
-  if (!p.prazoDias) return Object.assign({}, p, {calc:null});
-  return Object.assign({}, p, {calc: calcPrazo(p.disp, +p.prazoDias, p.tipo)});
+  const tipo = tipoDe(p), urgente = tipo==="corridos" && urgenteDe(p);
+  const base = Object.assign({}, p, {tipo, urgente, criminalAuto: !p.tipoManual && isCriminal(p)});
+  if (!p.prazoDias) return Object.assign(base, {calc:null});
+  return Object.assign(base, {calc: calcPrazo(p.disp, +p.prazoDias, tipo, urgente)});
 }
 
 function render(){
@@ -640,6 +671,7 @@ function card(p){
   const tl = c ? `<div class="timeline" id="tl-${p.id}" hidden>
       <div class="steps"><span>Disponibilizado <b>${WD[dow(p.disp)]} ${br(p.disp)}</b></span><span>Publicado <b>${WD[dow(c.pub)]} ${br(c.pub)}</b></span><span>1º dia <b>${WD[dow(c.inicio)]} ${br(c.inicio)}</b></span><span>Vence <b>${WD[dow(c.fim)]} ${br(c.fim)}</b></span></div>
       <div class="cal">${calRange(c)}</div>
+      ${p.tipo==="corridos" ? `<div class="hint">Contagem criminal (CPP art. 798): conta sábados, domingos e feriados; começa no primeiro dia útil após a publicação (Súmula 310/STF)${c.semRecesso ? "; réu preso ou urgente, corre também no recesso (art. 798-A)" : "; suspensa de 20/12 a 20/01 (art. 798-A)"}.</div>` : ""}
       ${c.prorrogado ? `<div class="hint">O último dia caiu em "${esc(c.prorrogado)}" e foi prorrogado para o próximo dia útil.</div>` : ""}
     </div>` : "";
   return `<article class="card ${cls}">
@@ -647,15 +679,16 @@ function card(p){
     <div class="body">
       <div class="proc"><span class="autos">Autos nº</span>${esc(p.processo)}</div>
       <div class="meta">${esc(p.tipoDoc)} · ${esc(p.classe||"")} · ${esc(p.orgao||"")} ${p.tribunal?"· "+esc(p.tribunal):""}</div>
-      <div class="tags">${p.origemDados==="Exemplo"?'<span class="tag ex">exemplo</span>':""}${getAdvs().length>1 && p.advs ? p.advs.map(l=>`<span class="tag">${esc(l)}</span>`).join("") : ""}${origem?`<span class="tag">${origem}</span>`:""}${p.tipo==="corridos"?`<span class="tag">${p.criminal&&p.origem!=="manual"?"processo criminal: dias corridos":"dias corridos"}</span>`:""}</div>
+      <div class="tags">${p.origemDados==="Exemplo"?'<span class="tag ex">exemplo</span>':""}${getAdvs().length>1 && p.advs ? p.advs.map(l=>`<span class="tag">${esc(l)}</span>`).join("") : ""}${origem?`<span class="tag">${origem}</span>`:""}${p.tipo==="corridos"?`<span class="tag">${p.criminalAuto?"processo criminal · dias corridos (CPP art. 798)":"criminal · dias corridos"}</span>`:""}${p.urgente?'<span class="tag">réu preso / urgente: corre no recesso</span>':""}</div>
       ${quote}
       <div class="ctrl">
         <label for="d-${p.id}">Prazo</label>
         <input type="number" min="1" max="365" id="d-${p.id}" value="${p.prazoDias||""}" data-act="dias" data-id="${p.id}" placeholder="dias">
-        <select id="t-${p.id}" data-act="tipo" data-id="${p.id}" aria-label="Tipo de contagem">
-          <option value="uteis" ${p.tipo!=="corridos"?"selected":""}>dias úteis</option>
-          <option value="corridos" ${p.tipo==="corridos"?"selected":""}>dias corridos</option>
+        <select id="t-${p.id}" data-act="tipo" data-id="${p.id}" aria-label="Área e tipo de contagem">
+          <option value="uteis" ${p.tipo!=="corridos"?"selected":""}>Cível · dias úteis</option>
+          <option value="corridos" ${p.tipo==="corridos"?"selected":""}>Criminal · dias corridos</option>
         </select>
+        ${p.tipo==="corridos"?`<label class="chk"><input type="checkbox" id="u-${p.id}" data-act="urgente" data-id="${p.id}" ${p.urgente?"checked":""}> Réu preso / urgente</label>`:""}
         ${c?`<button class="small" data-act="tl" data-id="${p.id}">Ver contagem</button>`:""}
         <button class="small" data-act="txt" data-id="${p.id}">Ver texto da publicação</button>
         ${p.link?`<a class="btn small" href="${esc(p.link)}" target="_blank" rel="noopener">Abrir no tribunal</a>`:""}
@@ -711,7 +744,8 @@ document.addEventListener("change", e => {
   const el = e.target; if (!el.dataset || !el.dataset.act) return;
   const p = state.pubs[el.dataset.id]; if (!p) return;
   if (el.dataset.act==="dias"){ p.prazoDias = +el.value || null; p.origem = p.prazoDias ? "manual" : null; }
-  if (el.dataset.act==="tipo"){ p.tipo = el.value; p.origem = "manual"; }
+  if (el.dataset.act==="tipo"){ p.tipo = el.value; p.tipoManual = true; }
+  if (el.dataset.act==="urgente"){ p.urgente = el.checked; }
   save(); render();
 });
 
