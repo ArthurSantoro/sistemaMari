@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pauta de Prazos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap">
+<style>
+/* Layout: faixa escura "toga" no topo com a balança e o local/data como num documento forense;
+   abaixo, resumo, faixa de 14 dias e a pauta. Paleta "Toga e Rubi": preto-toga, rubi do anel de grau, latão dourado. */
+:root{
+  --paper:#f4f3f0; --sheet:#fffefb; --ink:#1b1f2a; --muted:#69666f; --line:#dcd7cd; --line-soft:#ebe7df;
+  --toga:#161a24; --toga-fg:#ffffff; --toga-muted:#a9a49a;
+  --gold:#9c7a35; --gold-soft:#f1e8d4; --gold-bright:#c9a45a;
+  --rubi:#8e1b2e; --rubi-soft:#f7e6e8;
+  --ocre:#8a5f0e; --ocre-soft:#f8eed8;
+  --oliva:#3f6b45; --oliva-soft:#e5efe3;
+  --off:#eeebe5; --hatch:#e2ddd3;
+  --f-display:"Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --f-body:"Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --f-mono:ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0f1117; --sheet:#171a22; --ink:#ffffff; --muted:#a29e97; --line:#2c2f39; --line-soft:#22252e;
+    --toga:#0a0c11; --toga-fg:#ffffff; --toga-muted:#9a958b;
+    --gold:#d2ae66; --gold-soft:#2b2518; --gold-bright:#d9b86f;
+    --rubi:#ec7d8e; --rubi-soft:#36181e;
+    --ocre:#e6b65c; --ocre-soft:#33280f;
+    --oliva:#8fc597; --oliva-soft:#16261a;
+    --off:#1c1f27; --hatch:#252935; color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:18px/1.55 var(--f-body);font-variant-numeric:lining-nums}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.inner{max-width:1200px;margin:0 auto}
+
+/* cabeçalho toga */
+.toga{background:var(--toga);color:var(--toga-fg);padding-block:26px 22px;border-bottom:3px double var(--gold-bright)}
+.toga .inner{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;justify-content:space-between}
+.brand{display:flex;gap:16px;align-items:center;min-width:0}
+.brand svg{flex:none;width:64px;height:64px;color:var(--gold-bright)}
+h1{font:600 45.5px/1 var(--f-display);margin:0;letter-spacing:.01em;text-wrap:balance}
+.motto{font:italic 500 21px/1.3 "Cormorant Garamond", Garamond, Georgia, serif;color:var(--toga-muted);margin-top:4px}
+.motto b{font-weight:600;color:var(--gold-bright)}
+.dateline{font:500 20.5px/1.35 var(--f-display);color:var(--toga-fg);text-align:right}
+.dateline .oab{display:inline-block;margin-top:6px;font:600 14.5px var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--gold-bright);border:1px solid var(--gold-bright);padding:2px 9px;border-radius:2px}
+@media (max-width:640px){.dateline{text-align:left}h1{font-size:38.5px}}
+
+.wrap{padding-block:22px 64px;display:flex;flex-direction:column;gap:22px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+button,.btn{font:600 17px var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);padding:8px 16px;border-radius:3px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s, background .15s}
+button:hover,.btn:hover{border-color:var(--gold)}
+button.primary{background:var(--rubi);color:#fff;border-color:var(--rubi)}
+button.primary:hover{filter:brightness(1.08)}
+
+button.small,.btn.small{padding:4px 11px;font-size:15.5px;font-weight:500}
+button:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button:disabled{opacity:.6;cursor:wait}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--line);border-radius:3px;padding:7px 10px}
+textarea{width:100%;font:15.5px/1.5 var(--f-mono)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.status{font-size:15.5px;color:var(--muted);min-height:1.2em}
+.notice{border:1px solid var(--line);background:var(--sheet);border-radius:3px;padding:12px 16px;font-size:17px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.notice.demo{background:var(--gold-soft);border-color:var(--gold)}
+.notice.err{background:var(--rubi-soft);border-color:var(--rubi)}
+
+/* títulos de seção com fio dourado */
+h2{display:flex;align-items:center;gap:12px;font:600 26.5px/1.2 var(--f-display);color:var(--ink);margin:10px 0 0}
+h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent)}
+h2 small{font:600 14.5px var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* resumo */
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--sheet);border:1px solid var(--line);border-radius:3px}
+.sum{padding:14px 18px;text-decoration:none;color:inherit;border-left:1px solid var(--line-soft);display:flex;flex-direction:column;gap:2px}
+.sum:first-child{border-left:0}
+.sum:hover{background:var(--off)}
+.sum b{font:600 48px/1 var(--f-display);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.sum span{font-size:15.5px;color:var(--muted)}
+.sum.danger b{color:var(--rubi)} .sum.warn b{color:var(--ocre)}
+@media (max-width:640px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.sum:nth-child(3){border-left:0}.sum:nth-child(n+3){border-top:1px solid var(--line-soft)}}
+
+/* faixa de 14 dias */
+.strip{background:var(--sheet);border:1px solid var(--line);border-radius:3px;padding:14px 16px 16px;overflow-x:auto}
+.strip h2{margin:0 0 6px}
+.weeks{display:grid;grid-template-columns:repeat(7,minmax(78px,1fr));gap:5px;min-width:600px}
+.wk-label{grid-column:1/-1;font:600 14px var(--f-body);text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-top:8px}
+.day{border:1px solid var(--line);border-radius:2px;padding:6px 8px;min-height:72px;display:flex;flex-direction:column;gap:2px;font-size:14.5px;background:var(--sheet)}
+.day .d{font:600 18px var(--f-display);font-variant-numeric:lining-nums;color:var(--muted)}
+.day.today{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold);background:var(--gold-soft)}
+.day.today .d{color:var(--ink)}
+.day.off{background:repeating-linear-gradient(135deg,var(--off) 0 6px,var(--hatch) 6px 7px)}
+.day .why{color:var(--muted);font-size:13px;line-height:1.2;font-style:italic}
+.day .n{margin-top:auto;font:600 15px var(--f-body);color:var(--ink)}
+.day .n.hot{color:var(--rubi)}
+
+.group{display:flex;flex-direction:column;gap:12px}
+.group .empty{color:var(--muted);font:italic 500 19px var(--f-display);padding:2px 0}
+
+/* cartão: folha de autos com o prazo em carimbo */
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:3px;display:grid;grid-template-columns:196px minmax(0,1fr);overflow:hidden;box-shadow:0 1px 0 var(--line-soft)}
+.due{padding:14px 12px;border-right:1px solid var(--line-soft);display:flex;align-items:center;justify-content:center}
+.stamp{width:100%;max-width:168px;border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:2px;border-radius:2px;padding:8px 6px 7px;text-align:center;display:flex;flex-direction:column;gap:1px;color:var(--ink)}
+.stamp .lbl{font:600 12px var(--f-body);letter-spacing:.16em;text-transform:uppercase}
+.stamp .dt{font:700 41px/1 var(--f-display);font-variant-numeric:lining-nums tabular-nums}
+.stamp .wd{font:italic 500 17px var(--f-display)}
+.stamp .left{font:600 14.5px var(--f-body);margin-top:3px;padding-top:3px;border-top:1px solid currentColor}
+.card.late .stamp,.card.today .stamp{color:var(--rubi);border-color:var(--rubi);outline-color:var(--rubi);transform:rotate(-2.5deg)}
+.card.soon .stamp{color:var(--ocre);border-color:var(--ocre);outline-color:var(--ocre)}
+.card.done .stamp{color:var(--oliva);border-color:var(--oliva);outline-color:var(--oliva)}
+.card.done{opacity:.72}
+.card.nodue .stamp{color:var(--muted);border-style:dashed;outline-style:dashed;outline-color:var(--line);border-color:var(--muted)}
+.body{padding:14px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.proc{font:600 21.5px/1.2 var(--f-display);font-variant-numeric:lining-nums;word-break:break-word}
+.proc .autos{font:600 13px var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-right:6px}
+.meta{font-size:15.5px;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:14px;font-weight:600;letter-spacing:.03em;padding:1px 8px;border-radius:2px;border:1px solid var(--line);color:var(--muted);background:var(--paper)}
+.tag.ex{border-color:var(--gold);color:var(--gold);background:var(--gold-soft)}
+.quote{font:400 18px/1.5 var(--f-display);border-left:2px solid var(--gold);padding-left:12px;color:var(--ink)}
+.quote mark{background:var(--gold-soft);color:inherit;padding:0 3px;border-bottom:1.5px solid var(--gold);font-weight:700}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:15.5px;padding-top:4px;border-top:1px dotted var(--line)}
+.ctrl label{font-weight:600}
+.ctrl input[type=number]{width:84px}
+.timeline{font-size:15.5px;display:flex;flex-direction:column;gap:6px;background:var(--paper);border:1px solid var(--line-soft);padding:10px 12px;border-radius:2px}
+.timeline .steps{display:flex;flex-wrap:wrap;gap:4px 16px;color:var(--muted)}
+.timeline .steps b{color:var(--ink);font-weight:600}
+.cal{display:flex;flex-wrap:wrap;gap:3px}
+.cal span{font:14.5px var(--f-body);font-variant-numeric:tabular-nums;padding:2px 6px;border-radius:2px;background:var(--off);color:var(--muted)}
+.cal span.c{background:var(--sheet);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.cal span.c i{font-style:normal;font-size:12px;color:var(--gold);font-weight:700;margin-left:3px}
+.cal span.end{background:var(--rubi);color:#fff;box-shadow:none}
+.cal span.end i{color:#fff}
+.fulltext{font:18px/1.55 var(--f-display);white-space:pre-wrap;max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:2px;padding:12px 14px;background:var(--paper)}
+@media (max-width:640px){.card{grid-template-columns:1fr}.due{border-right:0;border-bottom:1px solid var(--line-soft);justify-content:flex-start}.stamp{max-width:170px}}
+
+/* diálogos */
+dialog{border:1px solid var(--line);border-top:3px double var(--gold);border-radius:3px;background:var(--sheet);color:var(--ink);padding:0;width:min(580px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(12,14,20,.55)}
+dialog form{padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+dialog h3{margin:0;font:600 31px var(--f-display)}
+.row{display:flex;flex-wrap:wrap;gap:10px}
+.row label{display:flex;flex-direction:column;gap:4px;font-size:15.5px;color:var(--muted);flex:1 1 140px}
+.hint{font-size:15px;color:var(--muted)}
+.foot{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+details.law{font-size:17px;color:var(--muted);background:var(--sheet);border:1px solid var(--line);border-radius:3px;padding:12px 16px}
+details.law summary{cursor:pointer;color:var(--ink);font:600 23px var(--f-display)}
+details.law li{margin:5px 0}
+details.law b{color:var(--ink)}
+footer.colophon{text-align:center;font:italic 500 18px var(--f-display);color:var(--muted)}
+footer.colophon span{color:var(--gold);font-style:normal}
+/* algarismos alinhados (a Cormorant usa algarismos antigos por padrão) */
+body, body *{font-variant-numeric:lining-nums tabular-nums!important}
+/* legibilidade: todos os textos na cor principal (branco no tema escuro, preto no claro), sem itálico */
+.wk-label,.proc .autos,.tag,.tag.ex,.cal span,.cal span.c i,.day .why,.day .d,.day .n,.day .n.hot,.sum b,.sum.danger b,.sum.warn b,.sum span,.meta,.hint,.status,.group .empty,h2,h2 small,details.law,details.law summary,.timeline .steps,.row label,.notice,footer.colophon,footer.colophon span,
+.stamp,.card.late .stamp,.card.today .stamp,.card.soon .stamp,.card.done .stamp,.card.nodue .stamp{color:var(--ink)!important}
+.toga,.toga h1,.dateline,.dateline .oab{color:var(--toga-fg)!important}
+.stamp .wd,.day .why,.group .empty,footer.colophon{font-style:normal!important}
+button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="toga gutter">
+  <div class="inner">
+    <div class="brand">
+      <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M32 8v44M22 56h20M26 52h12"/>
+        <circle cx="32" cy="8" r="2.4" fill="currentColor"/>
+        <path d="M12 16h40"/>
+        <path d="M12 16 5 34M12 16l7 18M52 16l-7 18M52 16l7 18"/>
+        <path d="M4 34c1.6 5 14.4 5 16 0Z" fill="currentColor" fill-opacity=".18"/>
+        <path d="M44 34c1.6 5 14.4 5 16 0Z" fill="currentColor" fill-opacity=".18"/>
+      </svg>
+      <div>
+        <h1>Pauta de Prazos</h1>
+        <div class="motto"><b>Dormientibus non succurrit ius.</b> O Direito não socorre aos que dormem.</div>
+      </div>
+    </div>
+    <div class="dateline" id="subline"></div>
+  </div>
+</header>
+<div class="wrap gutter">
+ <div class="inner" style="display:flex;flex-direction:column;gap:22px;width:100%">
+  <div class="toolbar">
+    <div class="status" id="status" role="status"></div>
+    <div class="actions">
+      <button class="primary" id="btnFetch">Buscar publicações</button>
+      <button id="btnManual">Adicionar manualmente</button>
+      <button id="btnConfig">Configurações</button>
+    </div>
+  </div>
+
+  <noscript><div class="notice err"><span><b>O painel não carregou aqui.</b> Esta é só uma pré-visualização do celular, que não roda o painel. Abra este arquivo no computador, no Chrome ou no Edge.</span></div></noscript>
+  <div id="banner"></div>
+
+  <section class="summary" id="summary"></section>
+  <section class="strip" id="strip"></section>
+  <main id="lists" class="group"></main>
+
+  <details class="law">
+    <summary>Como o prazo é contado aqui</summary>
+    <ul>
+      <li><b>Disponibilização → publicação:</b> a publicação considera-se feita no primeiro dia útil seguinte ao da disponibilização no Diário (Lei 11.419/2006, art. 4º, §3º; vale para o DJEN).</li>
+      <li><b>Início:</b> o prazo começa no primeiro dia útil seguinte ao da publicação (art. 4º, §4º; CPC art. 224).</li>
+      <li><b>Dias úteis:</b> prazos processuais cíveis contam só dias úteis (CPC art. 219), inclusive nos Juizados (Lei 9.099, art. 12-A).</li>
+      <li><b>Dias corridos:</b> use para prazos penais (CPP art. 798) e prazos materiais. Se o último dia cair em dia sem expediente, prorroga para o próximo dia útil.</li>
+      <li><b>Recesso:</b> de 20/12 a 20/01 os prazos ficam suspensos (CPC art. 220).</li>
+      <li><b>Expediente reduzido</b> (ex.: Quarta-feira de Cinzas): conta no meio do prazo, mas não pode ser o dia de início nem de vencimento (CPC art. 224, §1º).</li>
+      <li><b>Calendário do TJMS:</b> segue a Portaria TJMS nº 983/2025 (feriados de 2026) e a Lei estadual 3.056/2005. Na comarca de Campo Grande, 26/08 também não tem expediente. Suspensões avulsas (falha no sistema, ponto facultativo com fechamento do fórum) precisam ser cadastradas em Configurações. Prazo em dobro (Fazenda, Defensoria, litisconsortes com procuradores diferentes em autos físicos) deve ser lançado com o número de dias já dobrado.</li>
+      <li>Esta ferramenta é um apoio de conferência. O prazo fatal deve sempre ser confirmado no processo.</li>
+    </ul>
+  </details>
+  <footer class="colophon">Feito para a Dra. Mariana <span>&sect;</span> conferência de prazos pelo DJEN</footer>
+ </div>
+</div>
+
+<dialog id="dlgConfig">
+  <form method="dialog" id="formConfig">
+    <h3>Configurações</h3>
+    <div class="row">
+      <label>Número da OAB<input id="cfgOab" inputmode="numeric" placeholder="123456"></label>
+      <label>UF da OAB<input id="cfgUf" maxlength="2" placeholder="SP"></label>
+      <label>Buscar últimos (dias)<input id="cfgDias" type="number" min="1" max="60" value="15"></label>
+    </div>
+    <div class="row">
+      <label>Calendário de feriados<select id="cfgPerfil">
+        <option value="tjms-cg">TJMS · Comarca de Campo Grande</option>
+        <option value="tjms">TJMS · outras comarcas de MS</option>
+        <option value="nacional">Só feriados nacionais</option>
+      </select></label>
+    </div>
+    <label class="row"><span class="hint">Prazo padrão quando a publicação não diz o prazo (deixe vazio para eu marcar como "sem prazo definido")</span></label>
+    <div class="row">
+      <label>Prazo padrão (dias)<input id="cfgPadrao" type="number" min="1" max="365" placeholder="ex.: 5"></label>
+    </div>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:15.5px;color:var(--muted)">Feriados e suspensões locais (um por linha: <code>AAAA-MM-DD descrição</code>, ou um intervalo <code>AAAA-MM-DD..AAAA-MM-DD descrição</code>)
+      <textarea id="cfgFeriados" rows="6" placeholder="2026-01-25 Aniversário da cidade&#10;2026-07-09 Revolução Constitucionalista (SP)&#10;2026-10-28..2026-10-28 Dia do Servidor (ponto facultativo)"></textarea>
+    </label>
+    <div class="hint">Já estão incluídos: feriados nacionais, Carnaval e Cinzas, Quinta e Sexta-feira Santa, Corpus Christi, 11/08 (Cursos Jurídicos), 26/08 (Aniversário de Campo Grande), 8/12 (Dia da Justiça), 1º a 6/01 e o recesso de 20/12 a 20/01. Comece a linha com <code>PF</code> para ponto facultativo: ele aparece no calendário, mas conta como dia útil, para o prazo nunca ficar mais longo do que deveria. Quando o TJMS publicar a portaria de 2027, acrescente aqui o Dia do Servidor e os pontos facultativos.</div>
+    <div class="foot">
+      <button type="button" id="btnExport" class="small">Exportar backup</button>
+      <label class="btn small" for="fileImport">Importar backup</label>
+      <input type="file" id="fileImport" accept="application/json" hidden>
+      <span style="flex:1"></span>
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button class="primary" value="ok" id="btnSaveCfg">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgManual">
+  <form method="dialog" id="formManual">
+    <h3>Adicionar publicação</h3>
+    <div class="row">
+      <label>Nº do processo<input id="manProc" required></label>
+      <label>Data de disponibilização<input id="manData" type="date" required></label>
+    </div>
+    <div class="row">
+      <label>Prazo (dias)<input id="manDias" type="number" min="1" max="365" required></label>
+      <label>Contagem<select id="manTipo"><option value="uteis">Dias úteis</option><option value="corridos">Dias corridos</option></select></label>
+    </div>
+    <label style="display:flex;flex-direction:column;gap:4px;font-size:15.5px;color:var(--muted)">Texto ou resumo da publicação
+      <textarea id="manTexto" rows="5"></textarea>
+    </label>
+    <div class="hint">Se você já sabe a data da publicação (e não da disponibilização), informe o dia útil anterior a ela.</div>
+    <div class="foot">
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button class="primary" value="ok">Adicionar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+"use strict";
+/* ================= datas ================= */
+const P = s => { const [y,m,d] = s.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); };
+const F = dt => dt.toISOString().slice(0,10);
+const add = (s,n) => F(new Date(P(s).getTime() + n*864e5));
+const dow = s => P(s).getUTCDay();
+const WD = ["dom","seg","ter","qua","qui","sex","sáb"];
+const WDL = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
+const br = s => s.slice(8,10)+"/"+s.slice(5,7);
+const brY = s => br(s)+"/"+s.slice(0,4);
+const todayISO = () => { const n = new Date(); return F(new Date(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()))); };
+const diff = (a,b) => Math.round((P(b)-P(a))/864e5);
+
+function easter(y){ // algoritmo de Meeus/Jones/Butcher
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+  h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+  mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  return F(new Date(Date.UTC(y,mo-1,da)));
+}
+// Calendários: "tjms-cg" (TJMS, comarca de Campo Grande), "tjms" (TJMS, outras comarcas), "nacional"
+let holCache = {};
+function holidays(y){
+  if (holCache[y]) return holCache[y];
+  const perfil = state.settings.perfil || "tjms-cg", tjms = perfil.startsWith("tjms");
+  const e = easter(y), h = {};
+  const fx = (md,n,t="feriado") => h[y+"-"+md] = {n,t};
+  fx("01-01","Confraternização Universal"); fx("04-21","Tiradentes"); fx("05-01","Dia do Trabalho");
+  fx("09-07","Independência"); fx("10-12","N. Sra. Aparecida"); fx("11-02","Finados");
+  fx("11-15","Proclamação da República"); fx("11-20","Consciência Negra"); fx("12-08","Dia da Justiça");
+  fx("12-25","Natal");
+  h[add(e,-48)] = {n:"Carnaval",t:"feriado"}; h[add(e,-47)] = {n:"Carnaval",t:"feriado"};
+  h[add(e,-46)] = tjms ? {n:"Quarta-feira de Cinzas (sem expediente no TJMS)",t:"feriado"}
+                       : {n:"Quarta-feira de Cinzas (expediente reduzido)",t:"reduzido"};
+  if (!tjms) h[add(e,-4)] = {n:"Quarta-feira Santa",t:"feriado"};
+  h[add(e,-3)] = {n:"Quinta-feira Santa",t:"feriado"};
+  h[add(e,-2)] = {n:"Sexta-feira Santa",t:"feriado"}; h[add(e,60)] = {n:"Corpus Christi",t:"feriado"};
+  if (tjms){
+    for (let d=1; d<=6; d++) fx("01-0"+d,"Feriado forense TJMS (Lei 3.056/2005)");
+    fx("08-11","Instituição dos Cursos Jurídicos (TJMS)");
+  }
+  if (perfil==="tjms-cg") fx("08-26","Aniversário de Campo Grande (sem expediente na comarca)");
+  return holCache[y] = h;
+}
+const DEFAULT_LOCAIS = `2026-10-30 Dia do Servidor Público (TJMS, Portaria 983/2025)
+PF 2026-04-20 Ponto facultativo TJMS
+PF 2026-06-05 Ponto facultativo TJMS
+PF 2026-08-10 Ponto facultativo TJMS
+PF 2026-12-07 Ponto facultativo TJMS`;
+let customDays = {};
+function parseCustom(txt){
+  const out = {};
+  (txt||"").split(/\n/).forEach(line => {
+    const m = line.trim().match(/^(PF\s+)?(\d{4}-\d{2}-\d{2})(?:\s*\.\.\s*(\d{4}-\d{2}-\d{2}))?\s*(.*)$/i);
+    if (!m) return;
+    const pf = !!m[1];
+    let d = m[2]; const end = m[3] || m[2]; let guard = 0;
+    while (d <= end && guard++ < 400){ out[d] = {n:m[4]||(pf?"Ponto facultativo":"Sem expediente"),t:pf?"pf":"feriado"}; d = add(d,1); }
+  });
+  return out;
+}
+// motivo de não ser dia útil (null = dia útil normal)
+function dayInfo(s){
+  const w = dow(s);
+  const mo = +s.slice(5,7), da = +s.slice(8,10);
+  if ((mo===12 && da>=20) || (mo===1 && da<=20)) return {n:"Recesso forense",t:"recesso"};
+  if (customDays[s]) return customDays[s];
+  const h = holidays(+s.slice(0,4))[s];
+  if (w===0||w===6) return {n: w===0?"Domingo":"Sábado", t:"fds"};
+  return h || null;
+}
+// Ponto facultativo ("pf") é tratado como dia útil por segurança: o prazo nunca fica mais longo por causa dele.
+const countsUtil = s => { const i = dayInfo(s); return !i || i.t==="reduzido" || i.t==="pf"; }; // conta no meio do prazo
+const fullUtil  = s => { const i = dayInfo(s); return !i || i.t==="pf"; };                      // pode ser início / fim
+const nextFull = s => { let d = add(s,1); while(!fullUtil(d)) d = add(d,1); return d; };
+
+function calcPrazo(disp, n, tipo){
+  const pub = nextFull(disp);
+  const inicio = nextFull(pub);
+  const counted = [];
+  let d = inicio, guard = 0;
+  while (counted.length < n && guard++ < 2000){
+    const info = dayInfo(d);
+    const ok = tipo==="corridos" ? !(info && info.t==="recesso") : countsUtil(d);
+    if (ok) counted.push(d);
+    if (counted.length < n) d = add(d,1);
+  }
+  let fim = counted[counted.length-1], prorrogado = null;
+  if (!fullUtil(fim)){ prorrogado = dayInfo(fim).n; fim = nextFull(fim); }
+  return {pub, inicio, counted, fim, prorrogado};
+}
+
+/* ================= detecção do prazo no texto ================= */
+const EXT = {um:1,uma:1,dois:2,duas:2,"três":3,tres:3,quatro:4,cinco:5,seis:6,sete:7,oito:8,nove:9,dez:10,onze:11,doze:12,treze:13,quatorze:14,catorze:14,quinze:15,dezesseis:16,vinte:20,trinta:30,quarenta:40,sessenta:60,noventa:90};
+function extToNum(w){
+  const parts = w.toLowerCase().split(/\s+e\s+/); let t = 0;
+  for (const p of parts){ if (!(p in EXT)) return null; t += EXT[p]; }
+  return t;
+}
+const RX = /prazo\s+(?:comum\s+|legal\s+|sucessivo\s+|improrrog[aá]vel\s+)?de\s+(\d{1,3}|[a-zçêé]+(?:\s+e\s+[a-zçêé]+)?)\s*(?:\([^)]{1,40}\)\s*)?(dias?|horas?)(?:\s+(úteis|uteis|corridos))?/i;
+const RX2 = /\b(?:em|no|dentro de)\s+(\d{1,3})\s*(?:\([^)]{1,40}\)\s*)?dias(?:\s+(úteis|uteis|corridos))?/i;
+function detectPrazo(text){
+  let m = text.match(RX), n = null, unit = "dias", kind = null;
+  if (m){ n = /^\d+$/.test(m[1]) ? +m[1] : extToNum(m[1]); unit = m[2].toLowerCase(); kind = m[3]; }
+  else if ((m = text.match(RX2))){ n = +m[1]; kind = m[2]; }
+  if (!m || !n) return null;
+  const s = Math.max(0, m.index-90), e = Math.min(text.length, m.index+m[0].length+90);
+  return {
+    dias: n, horas: unit.startsWith("hora"),
+    tipo: kind && kind.toLowerCase()==="corridos" ? "corridos" : "uteis",
+    trecho: {antes:(s>0?"…":"")+text.slice(s,m.index), achado:m[0], depois:text.slice(m.index+m[0].length,e)+(e<text.length?"…":"")}
+  };
+}
+
+/* ================= estado ================= */
+const KEY = "pautaPrazos.v1";
+let state = {settings:{oab:"",uf:"MS",dias:15,padrao:"",perfil:"tjms-cg",feriados:DEFAULT_LOCAIS}, pubs:{}, demo:false};
+function load(){
+  try { const raw = localStorage.getItem(KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch(e){}
+  applyCalendar();
+}
+function applyCalendar(){ holCache = {}; customDays = parseCustom(state.settings.feriados); }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){ setStatus("Não consegui salvar no navegador: "+e.message); } }
+
+function htmlToText(html){
+  const doc = new DOMParser().parseFromString(html||"", "text/html");
+  doc.querySelectorAll("style,script,head").forEach(n=>n.remove());
+  doc.querySelectorAll("p,br,div,tr,section,li,h1,h2,h3").forEach(n=>n.append("\n"));
+  return (doc.body ? doc.body.textContent : "").replace(/[ \t ]+/g," ").replace(/\n\s*\n+/g,"\n\n").trim();
+}
+
+function makePub(o){
+  const det = detectPrazo(o.texto);
+  const padrao = +state.settings.padrao || null;
+  const criminal = /penal|criminal|inqu[eé]rito|crime/i.test((o.classe||"")+" "+(o.orgao||""));
+  return Object.assign({
+    prazoDias: det && !det.horas ? det.dias : padrao,
+    tipo: criminal || (det && det.tipo==="corridos") ? "corridos" : "uteis",
+    criminal,
+    origem: det && !det.horas ? "texto" : (padrao ? "padrao" : null),
+    det, status: "aberto"
+  }, o);
+}
+
+/* ================= API do DJEN (CNJ) ================= */
+const API = "https://comunicaapi.pje.jus.br/api/v1/comunicacao";
+async function fetchPubs(){
+  const {oab, uf, dias} = state.settings;
+  if (!oab || !uf){ openConfig(); setStatus("Informe o número e a UF da OAB para buscar."); return; }
+  const btn = document.getElementById("btnFetch"); btn.disabled = true;
+  const fim = todayISO(), ini = add(fim, -Math.max(1, +dias||15));
+  let page = 1, total = 0, novos = 0;
+  if (state.demo){ state.pubs = {}; state.demo = false; }
+  const seen = new Set(Object.values(state.pubs).map(p=>p.chave));
+  try {
+    while (page <= 20){
+      setStatus(`Buscando no Diário de Justiça Eletrônico Nacional… página ${page}`);
+      const url = `${API}?numeroOab=${encodeURIComponent(oab.replace(/\D/g,""))}&ufOab=${encodeURIComponent(uf.toUpperCase())}&dataDisponibilizacaoInicio=${ini}&dataDisponibilizacaoFim=${fim}&pagina=${page}&itensPorPagina=100`;
+      const r = await fetch(url);
+      if (r.status === 429){ setStatus("O CNJ limitou as consultas por minuto. Aguarde um minuto e busque de novo."); break; }
+      if (!r.ok) throw new Error("O serviço respondeu com erro "+r.status);
+      const j = await r.json();
+      const items = j.items || [];
+      for (const it of items){
+        total++;
+        const texto = htmlToText(it.texto).slice(0, 20000);
+        const chave = [it.numero_processo, it.data_disponibilizacao, it.tipoDocumento, texto.slice(0,300)].join("|");
+        if (seen.has(chave) || state.pubs["djen-"+it.id]) continue;
+        seen.add(chave); novos++;
+        state.pubs["djen-"+it.id] = makePub({
+          id:"djen-"+it.id, chave, origemDados:"DJEN",
+          processo: it.numeroprocessocommascara || it.numero_processo,
+          disp: it.data_disponibilizacao, tribunal: it.siglaTribunal, orgao: it.nomeOrgao,
+          classe: it.nomeClasse, tipoDoc: it.tipoDocumento || it.tipoComunicacao, link: it.link, texto
+        });
+      }
+      if (items.length < 100) break;
+      page++;
+    }
+    save(); render();
+    setStatus(`Busca concluída: ${total} comunicação(ões) de ${brY(ini)} a ${brY(fim)}, ${novos} nova(s). Última busca: ${new Date().toLocaleString("pt-BR")}.`);
+  } catch(e){
+    setStatus("");
+    banner(`Não consegui falar com o DJEN (${e.message}). Verifique a internet e tente de novo.`, "err");
+  } finally { btn.disabled = false; }
+}
+
+/* ================= exemplos ================= */
+function loadDemo(){
+  const t = todayISO();
+  const ex = [
+    {d:add(t,0), proc:"1001234-56.2026.8.12.0001", tipo:"DESPACHO/DECISÃO", orgao:"3ª Vara Cível do Foro Central", classe:"Procedimento Comum Cível",
+     txt:"Vistos. Manifeste-se a parte autora sobre a contestação e documentos, no prazo de 15 (quinze) dias. Int."},
+    {d:add(t,-8), proc:"0004567-89.2025.8.12.0001", tipo:"Intimação", orgao:"1ª Vara de Família e Sucessões", classe:"Divórcio Litigioso",
+     txt:"Fica a parte requerente intimada para, no prazo de 5 (cinco) dias, recolher as custas de diligência do oficial de justiça."},
+    {d:add(t,-3), proc:"4000348-34.2026.8.12.0001", tipo:"Ato ordinatório", orgao:"Juizado Especial Cível", classe:"Procedimento do Juizado Especial Cível",
+     txt:"Nos termos do art. 152, VI, do CPC, fica a parte autora intimada a se manifestar em 10 dias sobre o laudo juntado."},
+    {d:add(t,-1), proc:"1500260-87.2026.8.12.0001", tipo:"Intimação", orgao:"Vara Criminal", classe:"Ação Penal - Procedimento Ordinário",
+     txt:"Intime-se a defesa para apresentar resposta à acusação, no prazo de 10 (dez) dias corridos, nos termos do art. 396 do CPP."},
+    {d:add(t,-2), proc:"0000141-40.2025.8.12.0001", tipo:"Intimação", orgao:"2ª Vara Cível", classe:"Execução de Título Extrajudicial",
+     txt:"Ciência às partes do retorno dos autos do Tribunal. Nada sendo requerido, arquivem-se."}
+  ];
+  state.pubs = {}; state.demo = true;
+  ex.forEach((e,i) => { const id="demo-"+i; state.pubs[id] = makePub({id, chave:id, origemDados:"Exemplo", processo:e.proc, disp:e.d, tribunal:"TJMS", orgao:e.orgao, classe:e.classe, tipoDoc:e.tipo, link:"", texto:e.txt}); });
+}
+
+/* ================= interface ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function setStatus(t){ $("status").textContent = t; }
+function banner(msg, kind){
+  $("banner").innerHTML = msg ? `<div class="notice ${kind||""}"><span>${msg}</span>${kind==="demo"?'<button class="small" id="btnClearDemo">Limpar exemplos</button>':'<button class="small" id="btnCloseBanner">Fechar</button>'}</div>` : "";
+  const c = $("btnClearDemo"); if (c) c.onclick = () => { state.pubs = {}; state.demo = false; save(); render(); };
+  const x = $("btnCloseBanner"); if (x) x.onclick = () => banner("");
+}
+const weekStart = s => add(s, -((dow(s)+6)%7)); // segunda-feira
+
+function enrich(p){
+  if (!p.prazoDias) return Object.assign({}, p, {calc:null});
+  return Object.assign({}, p, {calc: calcPrazo(p.disp, +p.prazoDias, p.tipo)});
+}
+
+function render(){
+  const t = todayISO(), ws = weekStart(t), nws = add(ws,7), nnws = add(ws,14);
+  const s = state.settings;
+  const MES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  const local = (s.perfil||"tjms-cg")==="tjms-cg" ? "Campo Grande/MS, " : "";
+  $("subline").innerHTML = `${local}${WDL[dow(t)]}, ${+t.slice(8,10)} de ${MES[+t.slice(5,7)-1]} de ${t.slice(0,4)}` +
+    (s.oab ? `<br><span class="oab">OAB/${esc((s.uf||"").toUpperCase())} ${esc(s.oab)}</span>` : "");
+  if (state.demo) banner("Você está vendo <b>exemplos</b>. Abra Configurações, informe sua OAB e clique em Buscar publicações.", "demo");
+
+  const all = Object.values(state.pubs).map(enrich);
+  const open = all.filter(p => p.status==="aberto");
+  const g = {late:[], week:[], next:[], later:[], nodue:[], done:[]};
+  open.forEach(p => {
+    if (!p.calc) g.nodue.push(p);
+    else if (p.calc.fim < t) g.late.push(p);
+    else if (p.calc.fim < nws) g.week.push(p);
+    else if (p.calc.fim < nnws) g.next.push(p);
+    else g.later.push(p);
+  });
+  all.filter(p => p.status!=="aberto").forEach(p => g.done.push(p));
+  const byDue = (a,b) => (a.calc?.fim||"9").localeCompare(b.calc?.fim||"9") || a.disp.localeCompare(b.disp);
+  Object.values(g).forEach(a => a.sort(byDue));
+  g.nodue.sort((a,b)=>b.disp.localeCompare(a.disp));
+
+  const hoje = open.filter(p => p.calc && p.calc.fim===t).length;
+  $("summary").innerHTML = [
+    ["danger", g.late.length + hoje, "vencidos ou vencendo hoje", "#g-late"],
+    ["warn", g.week.length, "vencem nesta semana", "#g-week"],
+    ["", g.next.length, "vencem na próxima semana", "#g-next"],
+    ["", g.nodue.length, "sem prazo definido", "#g-nodue"]
+  ].map(([c,n,l,h]) => `<a class="sum ${n?c:""}" href="${h}"><b>${n}</b><span>${l}</span></a>`).join("");
+
+  // faixa de 14 dias
+  const perDay = {}; open.forEach(p => { if (p.calc) (perDay[p.calc.fim] ||= []).push(p); });
+  let strip = `<h2>Pauta das próximas duas semanas</h2><div class="weeks">`;
+  [["Esta semana",ws],["Próxima semana",nws]].forEach(([lab,start]) => {
+    strip += `<div class="wk-label">${lab} · ${br(start)} a ${br(add(start,6))}</div>`;
+    for (let i=0;i<7;i++){
+      const d = add(start,i), info = dayInfo(d), n = (perDay[d]||[]).length;
+      const why = info && info.t!=="fds" ? `<span class="why">${esc(info.n)}</span>` : "";
+      strip += `<div class="day ${d===t?"today":""} ${info&&info.t!=="pf"?"off":""}" title="${esc(info?info.n:"Dia útil")}"><span class="d">${WD[dow(d)]} ${br(d)}</span>${why}${n?`<span class="n ${d<=add(t,1)?"hot":""}">${n} prazo${n>1?"s":""}</span>`:""}</div>`;
+    }
+  });
+  $("strip").innerHTML = strip + "</div>";
+
+  const section = (id, title, arr, emptyMsg) => `<section class="group" id="${id}"><h2>${title} <small>${arr.length} ${arr.length===1?"publicação":"publicações"}</small></h2>${arr.length ? arr.map(card).join("") : `<div class="empty">${emptyMsg}</div>`}</section>`;
+  $("lists").innerHTML =
+    (g.late.length ? section("g-late","Vencidos e não marcados como cumpridos", g.late, "") : "") +
+    section("g-week", `Esta semana · até ${br(add(ws,6))}`, g.week, "Nenhum prazo vence nesta semana.") +
+    section("g-next", `Próxima semana · ${br(nws)} a ${br(add(nws,6))}`, g.next, "Nenhum prazo vence na próxima semana.") +
+    section("g-later", "Mais adiante", g.later, "Nada por enquanto.") +
+    section("g-nodue", "Sem prazo definido · confira e informe o prazo", g.nodue, "Todas as publicações têm prazo definido.") +
+    (g.done.length ? section("g-done","Cumpridos e arquivados", g.done, "") : "");
+}
+
+function card(p){
+  const t = todayISO(), c = p.calc;
+  let cls = "", dueHtml;
+  if (p.status!=="aberto"){ cls = "done"; }
+  if (!c){ cls += " nodue"; dueHtml = `<span class="lbl">Disponibilizado</span><span class="dt">${br(p.disp)}</span><span class="wd">${WDL[dow(p.disp)]}</span><span class="left">defina o prazo</span>`; }
+  else {
+    const left = diff(t, c.fim);
+    if (p.status==="aberto"){ if (left < 0) cls += " late"; else if (left === 0) cls += " today"; else if (left <= 2) cls += " soon"; }
+    const leftTxt = p.status==="cumprido" ? "cumprido" : p.status==="arquivado" ? "arquivado" : left<0 ? `venceu há ${-left} dia${left<-1?"s":""}` : left===0 ? "vence hoje" : left===1 ? "vence amanhã" : `faltam ${left} dias`;
+    const lbl = p.status!=="aberto" ? "Prazo" : left<=0 ? "Prazo fatal" : "Vencimento";
+    dueHtml = `<span class="lbl">${lbl}</span><span class="dt">${br(c.fim)}</span><span class="wd">${WDL[dow(c.fim)]}</span><span class="left">${leftTxt}</span>`;
+  }
+  const origem = p.origem==="texto" ? "prazo lido do texto, confira" : p.origem==="padrao" ? "prazo padrão, confira" : p.origem==="manual" ? "prazo informado por você" : "";
+  const quote = p.det ? `<div class="quote">${esc(p.det.trecho.antes)}<mark>${esc(p.det.trecho.achado)}</mark>${esc(p.det.trecho.depois)}${p.det.horas?" <b>(prazo em horas: confira manualmente)</b>":""}</div>`
+                      : `<div class="quote">${esc(p.texto.slice(0,260))}${p.texto.length>260?"…":""}</div>`;
+  const tl = c ? `<div class="timeline" id="tl-${p.id}" hidden>
+      <div class="steps"><span>Disponibilizado <b>${WD[dow(p.disp)]} ${br(p.disp)}</b></span><span>Publicado <b>${WD[dow(c.pub)]} ${br(c.pub)}</b></span><span>1º dia <b>${WD[dow(c.inicio)]} ${br(c.inicio)}</b></span><span>Vence <b>${WD[dow(c.fim)]} ${br(c.fim)}</b></span></div>
+      <div class="cal">${calRange(c)}</div>
+      ${c.prorrogado ? `<div class="hint">O último dia caiu em "${esc(c.prorrogado)}" e foi prorrogado para o próximo dia útil.</div>` : ""}
+    </div>` : "";
+  return `<article class="card ${cls}">
+    <div class="due"><div class="stamp">${dueHtml}</div></div>
+    <div class="body">
+      <div class="proc"><span class="autos">Autos nº</span>${esc(p.processo)}</div>
+      <div class="meta">${esc(p.tipoDoc)} · ${esc(p.classe||"")} · ${esc(p.orgao||"")} ${p.tribunal?"· "+esc(p.tribunal):""}</div>
+      <div class="tags">${p.origemDados==="Exemplo"?'<span class="tag ex">exemplo</span>':""}${origem?`<span class="tag">${origem}</span>`:""}${p.tipo==="corridos"?`<span class="tag">${p.criminal&&p.origem!=="manual"?"processo criminal: dias corridos":"dias corridos"}</span>`:""}</div>
+      ${quote}
+      <div class="ctrl">
+        <label for="d-${p.id}">Prazo</label>
+        <input type="number" min="1" max="365" id="d-${p.id}" value="${p.prazoDias||""}" data-act="dias" data-id="${p.id}" placeholder="dias">
+        <select id="t-${p.id}" data-act="tipo" data-id="${p.id}" aria-label="Tipo de contagem">
+          <option value="uteis" ${p.tipo!=="corridos"?"selected":""}>dias úteis</option>
+          <option value="corridos" ${p.tipo==="corridos"?"selected":""}>dias corridos</option>
+        </select>
+        ${c?`<button class="small" data-act="tl" data-id="${p.id}">Ver contagem</button>`:""}
+        <button class="small" data-act="txt" data-id="${p.id}">Ver texto</button>
+        ${p.link?`<a class="btn small" href="${esc(p.link)}" target="_blank" rel="noopener">Abrir no tribunal</a>`:""}
+        ${p.status==="aberto"
+          ? `<button class="small" data-act="cumprido" data-id="${p.id}">Marcar cumprido</button><button class="small" data-act="arquivar" data-id="${p.id}">Sem prazo / arquivar</button>`
+          : `<button class="small" data-act="reabrir" data-id="${p.id}">Reabrir</button>`}
+      </div>
+      ${tl}
+      <div class="fulltext" id="tx-${p.id}" hidden>${esc(p.texto)}</div>
+    </div>
+  </article>`;
+}
+function calRange(c){
+  const set = new Map(c.counted.map((d,i)=>[d,i+1]));
+  let out = "", d = c.pub, guard = 0;
+  while (d <= c.fim && guard++ < 400){
+    const k = set.get(d), info = dayInfo(d);
+    const title = info ? info.n : (k ? `${k}º dia` : "");
+    out += `<span class="${k?"c":""} ${d===c.fim?"end":""}" title="${esc(title)}">${WD[dow(d)]} ${br(d)}${k?`<i>${k}</i>`:""}</span>`;
+    d = add(d,1);
+  }
+  return out;
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); if (!b || b.tagName==="INPUT" || b.tagName==="SELECT") return;
+  const id = b.dataset.id, p = state.pubs[id];
+  if (!p) return;
+  if (b.dataset.act==="tl"){ const el=$("tl-"+id); el.hidden=!el.hidden; return; }
+  if (b.dataset.act==="txt"){ const el=$("tx-"+id); el.hidden=!el.hidden; return; }
+  if (b.dataset.act==="cumprido") p.status="cumprido";
+  if (b.dataset.act==="arquivar") p.status="arquivado";
+  if (b.dataset.act==="reabrir") p.status="aberto";
+  save(); render();
+});
+document.addEventListener("change", e => {
+  const el = e.target; if (!el.dataset || !el.dataset.act) return;
+  const p = state.pubs[el.dataset.id]; if (!p) return;
+  if (el.dataset.act==="dias"){ p.prazoDias = +el.value || null; p.origem = p.prazoDias ? "manual" : null; }
+  if (el.dataset.act==="tipo"){ p.tipo = el.value; p.origem = "manual"; }
+  save(); render();
+});
+
+function openConfig(){
+  const s = state.settings;
+  $("cfgOab").value = s.oab||""; $("cfgUf").value = s.uf||""; $("cfgDias").value = s.dias||15;
+  $("cfgPadrao").value = s.padrao||""; $("cfgFeriados").value = s.feriados||""; $("cfgPerfil").value = s.perfil||"tjms-cg";
+  $("dlgConfig").showModal();
+}
+$("btnConfig").onclick = openConfig;
+$("dlgConfig").addEventListener("close", () => {
+  if ($("dlgConfig").returnValue!=="ok") return;
+  Object.assign(state.settings, {oab:$("cfgOab").value.trim(), uf:$("cfgUf").value.trim().toUpperCase(), dias:+$("cfgDias").value||15, padrao:$("cfgPadrao").value.trim(), feriados:$("cfgFeriados").value});
+  state.settings.perfil = $("cfgPerfil").value;
+  applyCalendar();
+  save(); render(); setStatus("Configurações salvas.");
+});
+$("btnFetch").onclick = fetchPubs;
+$("btnManual").onclick = () => { $("formManual").reset(); $("manData").value = todayISO(); $("dlgManual").showModal(); };
+$("dlgManual").addEventListener("close", () => {
+  if ($("dlgManual").returnValue!=="ok") return;
+  if (state.demo){ state.pubs = {}; state.demo = false; banner(""); }
+  const id = "man-"+Date.now(), texto = $("manTexto").value.trim();
+  state.pubs[id] = {id, chave:id, origemDados:"Manual", processo:$("manProc").value.trim(), disp:$("manData").value, tribunal:"", orgao:"", classe:"", tipoDoc:"Lançamento manual", link:"", texto, det:detectPrazo(texto), prazoDias:+$("manDias").value, tipo:$("manTipo").value, origem:"manual", status:"aberto"};
+  save(); render();
+});
+$("btnExport").onclick = () => {
+  const blob = new Blob([JSON.stringify(state,null,1)], {type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `pauta-prazos-${todayISO()}.json`; a.click();
+};
+$("fileImport").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { state = JSON.parse(await f.text()); applyCalendar(); save(); $("dlgConfig").close(); render(); setStatus("Backup importado."); }
+  catch(err){ setStatus("Arquivo de backup inválido."); }
+};
+
+load();
+if (!Object.keys(state.pubs).length && !state.settings.oab){ loadDemo(); }
+render();
+</script>
+</body>
+</html>
