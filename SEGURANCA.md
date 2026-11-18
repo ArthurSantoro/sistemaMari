@@ -78,7 +78,9 @@ Não há servidor próprio, upload de documentos, envio de e-mails/notificaçõe
    *Ativar criação (inscrição)*. Contas só serão criadas pelo console.
 4. **Proteção contra enumeração de e-mail** — Authentication → Configurações → confirmar que está ativada.
 5. **Restringir a chave da API** — Google Cloud Console → APIs e serviços → Credenciais → chave
-   "Browser key": restrição de **sites** `https://arthursantoro.github.io/*` e `http://localhost/*`;
+   "Browser key": restrição de **sites** `https://arthursantoro.github.io/*`, `https://pauta-de-prazos.firebaseapp.com/*`,
+   `https://pauta-de-prazos.web.app/*` (as duas últimas são as páginas do Firebase que abrem os links de
+   confirmar e-mail e de nova senha; sem elas esses links dão "expirado ou já usado") e `http://localhost:8767/*` (testes);
    restrição de **APIs**: Identity Toolkit, Token Service, Cloud Firestore.
 6. **Publicar as regras** — Firestore → Regras → colar `firestore.rules` → Publicar.
 
