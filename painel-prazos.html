@@ -154,6 +154,20 @@ footer.colophon{text-align:center;font:italic 500 18px var(--f-display);color:va
 footer.colophon span{color:var(--gold);font-style:normal}
 /* algarismos alinhados (a Cormorant usa algarismos antigos por padrão) */
 body, body *{font-variant-numeric:lining-nums tabular-nums!important}
+/* advogados e lista de feriados (configurações) */
+.advs{display:flex;flex-direction:column;gap:8px}
+.advs-head{font-weight:600}
+.advlist{display:flex;flex-direction:column;gap:6px}
+.advrow{display:grid;grid-template-columns:minmax(0,1fr) 120px 64px auto;gap:6px;align-items:center}
+.advrow input{min-width:0;width:100%}
+@media (max-width:560px){.advrow{grid-template-columns:minmax(0,1fr) 64px}.advrow .advNome{grid-column:1/-1}}
+.hols summary{cursor:pointer;font-weight:600}
+.hols h4{margin:10px 0 4px;font-size:16px}
+.hols ul{margin:0;padding-left:18px;columns:2;column-gap:24px;font-size:15px}
+.hols li{break-inside:avoid;margin:2px 0}
+.hols .src{font-size:13px;opacity:.85}
+@media (max-width:560px){.hols ul{columns:1}}
+#fltAdv{max-width:260px}
 /* legibilidade: todos os textos na cor principal (branco no tema escuro, preto no claro), sem itálico */
 .wk-label,.proc .autos,.tag,.tag.ex,.cal span,.cal span.c i,.day .why,.day .d,.day .n,.day .n.hot,.sum b,.sum.danger b,.sum.warn b,.sum span,.meta,.hint,.status,.group .empty,h2,h2 small,details.law,details.law summary,.timeline .steps,.row label,.notice,footer.colophon,footer.colophon span,
 .stamp,.card.late .stamp,.card.today .stamp,.card.soon .stamp,.card.done .stamp,.card.nodue .stamp{color:var(--ink)!important}
@@ -187,6 +201,7 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
   <div class="toolbar">
     <div class="status" id="status" role="status"></div>
     <div class="actions">
+      <select id="fltAdv" aria-label="Filtrar por advogado" hidden></select>
       <button class="primary" id="btnFetch">Buscar publicações</button>
       <button id="btnManual">Adicionar manualmente</button>
       <button id="btnConfig">Configurações</button>
@@ -201,8 +216,10 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
   <main id="lists" class="group"></main>
 
   <details class="law">
-    <summary>Como o prazo é contado aqui</summary>
+    <summary>De onde vêm os dados e como o prazo é contado</summary>
     <ul>
+      <li><b>Fonte das publicações:</b> Diário de Justiça Eletrônico Nacional (DJEN), do CNJ, pela consulta pública oficial (comunica.pje.jus.br). É o mesmo texto publicado no Diário, pesquisado pelo número da OAB. "Ver texto da publicação" mostra esse texto na íntegra, e "Abrir no tribunal" leva ao documento no sistema do tribunal.</li>
+      <li><b>Número de dias do prazo:</b> lido no próprio texto da publicação (ex.: "no prazo de 15 (quinze) dias"). Quando o texto não diz, o prazo fica em branco para você informar.</li>
       <li><b>Disponibilização → publicação:</b> a publicação considera-se feita no primeiro dia útil seguinte ao da disponibilização no Diário (Lei 11.419/2006, art. 4º, §3º; vale para o DJEN).</li>
       <li><b>Início:</b> o prazo começa no primeiro dia útil seguinte ao da publicação (art. 4º, §4º; CPC art. 224).</li>
       <li><b>Dias úteis:</b> prazos processuais cíveis contam só dias úteis (CPC art. 219), inclusive nos Juizados (Lei 9.099, art. 12-A).</li>
@@ -220,9 +237,12 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
 <dialog id="dlgConfig">
   <form method="dialog" id="formConfig">
     <h3>Configurações</h3>
+    <div class="advs">
+      <div class="advs-head">Advogados acompanhados <span class="hint">(o painel busca as publicações de todos)</span></div>
+      <div id="advList" class="advlist"></div>
+      <div><button type="button" class="small" id="btnAddAdv">+ Adicionar advogado</button></div>
+    </div>
     <div class="row">
-      <label>Número da OAB<input id="cfgOab" inputmode="numeric" placeholder="123456"></label>
-      <label>UF da OAB<input id="cfgUf" maxlength="2" placeholder="SP"></label>
       <label>Buscar últimos (dias)<input id="cfgDias" type="number" min="1" max="60" value="15"></label>
     </div>
     <div class="row">
@@ -240,6 +260,7 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
       <textarea id="cfgFeriados" rows="6" placeholder="2026-01-25 Aniversário da cidade&#10;2026-07-09 Revolução Constitucionalista (SP)&#10;2026-10-28..2026-10-28 Dia do Servidor (ponto facultativo)"></textarea>
     </label>
     <div class="hint">Já estão incluídos: feriados nacionais, Carnaval e Cinzas, Quinta e Sexta-feira Santa, Corpus Christi, 11/08 (Cursos Jurídicos), 26/08 (Aniversário de Campo Grande), 8/12 (Dia da Justiça), 1º a 6/01 e o recesso de 20/12 a 20/01. Comece a linha com <code>PF</code> para ponto facultativo: ele aparece no calendário, mas conta como dia útil, para o prazo nunca ficar mais longo do que deveria. Quando o TJMS publicar a portaria de 2027, acrescente aqui o Dia do Servidor e os pontos facultativos.</div>
+    <details class="hols" id="holsBox"><summary>Ver todos os feriados já programados</summary><div id="holList"></div></details>
     <div class="foot">
       <button type="button" id="btnExport" class="small">Exportar backup</button>
       <label class="btn small" for="fileImport">Importar backup</label>
@@ -419,41 +440,61 @@ function makePub(o){
 
 /* ================= API do DJEN (CNJ) ================= */
 const API = "https://comunicaapi.pje.jus.br/api/v1/comunicacao";
+// Lista de advogados acompanhados ({nome, oab, uf}); aceita o formato antigo de uma OAB só
+function getAdvs(){
+  const s = state.settings;
+  if (Array.isArray(s.advs)) return s.advs.filter(a => a.oab && a.uf);
+  return s.oab ? [{nome:"", oab:s.oab, uf:s.uf||"MS"}] : [];
+}
+const advLabel = a => `OAB/${a.uf.toUpperCase()} ${a.oab}` + (a.nome ? ` · ${a.nome}` : "");
 async function fetchPubs(){
-  const {oab, uf, dias} = state.settings;
-  if (!oab || !uf){ openConfig(); setStatus("Informe o número e a UF da OAB para buscar."); return; }
+  const advs = getAdvs(), dias = state.settings.dias;
+  if (!advs.length){ openConfig(); setStatus("Informe pelo menos uma OAB (número e UF) para buscar."); return; }
   const btn = document.getElementById("btnFetch"); btn.disabled = true;
   const fim = todayISO(), ini = add(fim, -Math.max(1, +dias||15));
-  let page = 1, total = 0, novos = 0;
+  let total = 0, novos = 0, limitado = false;
   if (state.demo){ state.pubs = {}; state.demo = false; }
-  const seen = new Set(Object.values(state.pubs).map(p=>p.chave));
+  const byChave = new Map(Object.values(state.pubs).map(p => [p.chave, p]));
   try {
-    while (page <= 20){
-      setStatus(`Buscando no Diário de Justiça Eletrônico Nacional… página ${page}`);
-      const url = `${API}?numeroOab=${encodeURIComponent(oab.replace(/\D/g,""))}&ufOab=${encodeURIComponent(uf.toUpperCase())}&dataDisponibilizacaoInicio=${ini}&dataDisponibilizacaoFim=${fim}&pagina=${page}&itensPorPagina=100`;
-      const r = await fetch(url);
-      if (r.status === 429){ setStatus("O CNJ limitou as consultas por minuto. Aguarde um minuto e busque de novo."); break; }
-      if (!r.ok) throw new Error("O serviço respondeu com erro "+r.status);
-      const j = await r.json();
-      const items = j.items || [];
-      for (const it of items){
-        total++;
-        const texto = htmlToText(it.texto).slice(0, 20000);
-        const chave = [it.numero_processo, it.data_disponibilizacao, it.tipoDocumento, texto.slice(0,300)].join("|");
-        if (seen.has(chave) || state.pubs["djen-"+it.id]) continue;
-        seen.add(chave); novos++;
-        state.pubs["djen-"+it.id] = makePub({
-          id:"djen-"+it.id, chave, origemDados:"DJEN",
-          processo: it.numeroprocessocommascara || it.numero_processo,
-          disp: it.data_disponibilizacao, tribunal: it.siglaTribunal, orgao: it.nomeOrgao,
-          classe: it.nomeClasse, tipoDoc: it.tipoDocumento || it.tipoComunicacao, link: it.link, texto
-        });
+    for (const adv of advs){
+      const lab = advLabel(adv);
+      let page = 1;
+      while (page <= 20){
+        setStatus(`Buscando no DJEN: ${lab}… página ${page}`);
+        const url = `${API}?numeroOab=${encodeURIComponent(String(adv.oab).replace(/\D/g,""))}&ufOab=${encodeURIComponent(adv.uf.toUpperCase())}&dataDisponibilizacaoInicio=${ini}&dataDisponibilizacaoFim=${fim}&pagina=${page}&itensPorPagina=100`;
+        const r = await fetch(url);
+        if (r.status === 429){ limitado = true; break; }
+        if (!r.ok) throw new Error("O serviço respondeu com erro "+r.status);
+        const j = await r.json();
+        const items = j.items || [];
+        for (const it of items){
+          total++;
+          const texto = htmlToText(it.texto).slice(0, 20000);
+          const chave = [it.numero_processo, it.data_disponibilizacao, it.tipoDocumento, texto.slice(0,300)].join("|");
+          const existing = byChave.get(chave) || state.pubs["djen-"+it.id];
+          if (existing){
+            existing.advs = existing.advs || [];
+            if (!existing.advs.includes(lab)) existing.advs.push(lab);
+            continue;
+          }
+          novos++;
+          const p = state.pubs["djen-"+it.id] = makePub({
+            id:"djen-"+it.id, chave, origemDados:"DJEN", advs:[lab],
+            processo: it.numeroprocessocommascara || it.numero_processo,
+            disp: it.data_disponibilizacao, tribunal: it.siglaTribunal, orgao: it.nomeOrgao,
+            classe: it.nomeClasse, tipoDoc: it.tipoDocumento || it.tipoComunicacao, link: it.link, texto
+          });
+          byChave.set(chave, p);
+        }
+        if (items.length < 100) break;
+        page++;
       }
-      if (items.length < 100) break;
-      page++;
+      if (limitado) break;
     }
     save(); render();
-    setStatus(`Busca concluída: ${total} comunicação(ões) de ${brY(ini)} a ${brY(fim)}, ${novos} nova(s). Última busca: ${new Date().toLocaleString("pt-BR")}.`);
+    setStatus(limitado
+      ? `O CNJ limitou as consultas por minuto. Trouxe ${novos} nova(s) até aqui; aguarde um minuto e busque de novo para completar.`
+      : `Busca concluída (${advs.length} advogado${advs.length>1?"s":""}): ${total} comunicação(ões) de ${brY(ini)} a ${brY(fim)}, ${novos} nova(s). Última busca: ${new Date().toLocaleString("pt-BR")}.`);
   } catch(e){
     setStatus("");
     banner(`Não consegui falar com o DJEN (${e.message}). Verifique a internet e tente de novo.`, "err");
@@ -501,10 +542,16 @@ function render(){
   const MES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const local = (s.perfil||"tjms-cg")==="tjms-cg" ? "Campo Grande/MS, " : "";
   $("subline").innerHTML = `${local}${WDL[dow(t)]}, ${+t.slice(8,10)} de ${MES[+t.slice(5,7)-1]} de ${t.slice(0,4)}` +
-    (s.oab ? `<br><span class="oab">OAB/${esc((s.uf||"").toUpperCase())} ${esc(s.oab)}</span>` : "");
+    (getAdvs().length ? "<br>" + getAdvs().map(a => `<span class="oab">OAB/${esc(a.uf.toUpperCase())} ${esc(a.oab)}</span>`).join(" ") : "");
+  // filtro por advogado (aparece com 2 ou mais OABs)
+  const advsNow = getAdvs(), flt = $("fltAdv");
+  flt.hidden = advsNow.length < 2;
+  if (advsNow.length < 2) state.filtroAdv = "";
+  flt.innerHTML = `<option value="">Todos os advogados</option>` + advsNow.map(a => { const l = advLabel(a); return `<option value="${esc(l)}" ${state.filtroAdv===l?"selected":""}>${esc(l)}</option>`; }).join("");
   if (state.demo) banner("Você está vendo <b>exemplos</b>. Abra Configurações, informe sua OAB e clique em Buscar publicações.", "demo");
+  else if ($("banner").querySelector(".demo")) banner("");
 
-  const all = Object.values(state.pubs).map(enrich);
+  const all = Object.values(state.pubs).filter(p => !state.filtroAdv || !p.advs || p.advs.includes(state.filtroAdv)).map(enrich);
   const open = all.filter(p => p.status==="aberto");
   const g = {late:[], week:[], next:[], later:[], nodue:[], done:[]};
   open.forEach(p => {
@@ -575,7 +622,7 @@ function card(p){
     <div class="body">
       <div class="proc"><span class="autos">Autos nº</span>${esc(p.processo)}</div>
       <div class="meta">${esc(p.tipoDoc)} · ${esc(p.classe||"")} · ${esc(p.orgao||"")} ${p.tribunal?"· "+esc(p.tribunal):""}</div>
-      <div class="tags">${p.origemDados==="Exemplo"?'<span class="tag ex">exemplo</span>':""}${origem?`<span class="tag">${origem}</span>`:""}${p.tipo==="corridos"?`<span class="tag">${p.criminal&&p.origem!=="manual"?"processo criminal: dias corridos":"dias corridos"}</span>`:""}</div>
+      <div class="tags">${p.origemDados==="Exemplo"?'<span class="tag ex">exemplo</span>':""}${getAdvs().length>1 && p.advs ? p.advs.map(l=>`<span class="tag">${esc(l)}</span>`).join("") : ""}${origem?`<span class="tag">${origem}</span>`:""}${p.tipo==="corridos"?`<span class="tag">${p.criminal&&p.origem!=="manual"?"processo criminal: dias corridos":"dias corridos"}</span>`:""}</div>
       ${quote}
       <div class="ctrl">
         <label for="d-${p.id}">Prazo</label>
@@ -585,7 +632,7 @@ function card(p){
           <option value="corridos" ${p.tipo==="corridos"?"selected":""}>dias corridos</option>
         </select>
         ${c?`<button class="small" data-act="tl" data-id="${p.id}">Ver contagem</button>`:""}
-        <button class="small" data-act="txt" data-id="${p.id}">Ver texto</button>
+        <button class="small" data-act="txt" data-id="${p.id}">Ver texto da publicação</button>
         ${p.link?`<a class="btn small" href="${esc(p.link)}" target="_blank" rel="noopener">Abrir no tribunal</a>`:""}
         ${p.status==="aberto"
           ? `<button class="small" data-act="cumprido" data-id="${p.id}">Marcar cumprido</button><button class="small" data-act="arquivar" data-id="${p.id}">Sem prazo / arquivar</button>`
@@ -627,20 +674,66 @@ document.addEventListener("change", e => {
   save(); render();
 });
 
+let advRowSeq = 0;
+function advRow(a){
+  const i = advRowSeq++;
+  const div = document.createElement("div"); div.className = "advrow";
+  div.innerHTML = `<input class="advNome" id="advNome-${i}" placeholder="Nome (opcional)" aria-label="Nome do advogado" value="${esc(a.nome||"")}">
+    <input class="advOab" id="advOab-${i}" inputmode="numeric" placeholder="Nº da OAB" aria-label="Número da OAB" value="${esc(a.oab||"")}">
+    <input class="advUf" id="advUf-${i}" maxlength="2" placeholder="UF" aria-label="UF da OAB" value="${esc(a.uf||"MS")}">
+    <button type="button" class="small advDel">Remover</button>`;
+  div.querySelector(".advDel").onclick = () => { div.remove(); if (!$("advList").children.length) $("advList").append(advRow({})); };
+  return div;
+}
+$("btnAddAdv").onclick = () => { const r = advRow({}); $("advList").append(r); r.querySelector(".advNome").focus(); };
+
+// lista legível de todos os dias sem expediente programados no ano
+function holidayList(y){
+  const out = []; let d = `${y}-01-01`;
+  while (d <= `${y}-12-31`){
+    const i = dayInfo(d);
+    if (i && i.t!=="fds" && i.t!=="recesso") out.push({d, ...i, local: !!customDays[d]});
+    d = add(d,1);
+  }
+  return out;
+}
+function renderHolidays(){
+  const y = +todayISO().slice(0,4);
+  const block = yy => `<h4>${yy}</h4><ul>${holidayList(yy).map(h => `<li><b>${br(h.d)}</b> ${WD[dow(h.d)]} · ${esc(h.n)}${h.t==="pf"?" (conta como dia útil)":""}${h.local?' <span class="src">(adicionado por você)</span>':""}</li>`).join("")}<li><b>20/12 a 20/01</b> · Recesso forense, prazos suspensos (CPC art. 220)</li></ul>`;
+  $("holList").innerHTML = block(y) + block(y+1);
+}
 function openConfig(){
   const s = state.settings;
-  $("cfgOab").value = s.oab||""; $("cfgUf").value = s.uf||""; $("cfgDias").value = s.dias||15;
+  $("advList").innerHTML = "";
+  const advs = getAdvs();
+  (advs.length ? advs : [{}]).forEach(a => $("advList").append(advRow(a)));
+  $("cfgDias").value = s.dias||15;
   $("cfgPadrao").value = s.padrao||""; $("cfgFeriados").value = s.feriados||""; $("cfgPerfil").value = s.perfil||"tjms-cg";
+  renderHolidays();
   $("dlgConfig").showModal();
 }
+// a lista de feriados acompanha as mudanças feitas na própria janela
+["cfgPerfil","cfgFeriados"].forEach(id => $(id).addEventListener("change", () => {
+  const prev = {perfil:state.settings.perfil, feriados:state.settings.feriados};
+  state.settings.perfil = $("cfgPerfil").value; state.settings.feriados = $("cfgFeriados").value;
+  applyCalendar(); renderHolidays();
+  Object.assign(state.settings, prev); applyCalendar();
+}));
 $("btnConfig").onclick = openConfig;
 $("dlgConfig").addEventListener("close", () => {
   if ($("dlgConfig").returnValue!=="ok") return;
-  Object.assign(state.settings, {oab:$("cfgOab").value.trim(), uf:$("cfgUf").value.trim().toUpperCase(), dias:+$("cfgDias").value||15, padrao:$("cfgPadrao").value.trim(), feriados:$("cfgFeriados").value});
+  const advs = [...$("advList").querySelectorAll(".advrow")].map(r => ({
+    nome: r.querySelector(".advNome").value.trim(),
+    oab: r.querySelector(".advOab").value.replace(/\D/g,""),
+    uf: r.querySelector(".advUf").value.trim().toUpperCase()
+  })).filter(a => a.oab && a.uf);
+  Object.assign(state.settings, {advs, dias:+$("cfgDias").value||15, padrao:$("cfgPadrao").value.trim(), feriados:$("cfgFeriados").value});
+  delete state.settings.oab;
   state.settings.perfil = $("cfgPerfil").value;
   applyCalendar();
   save(); render(); setStatus("Configurações salvas.");
 });
+$("fltAdv").addEventListener("change", e => { state.filtroAdv = e.target.value; save(); render(); });
 $("btnFetch").onclick = fetchPubs;
 $("btnManual").onclick = () => { $("formManual").reset(); $("manData").value = todayISO(); $("dlgManual").showModal(); };
 $("dlgManual").addEventListener("close", () => {
@@ -661,7 +754,7 @@ $("fileImport").onchange = async e => {
 };
 
 load();
-if (!Object.keys(state.pubs).length && !state.settings.oab){ loadDemo(); }
+if (!Object.keys(state.pubs).length && !getAdvs().length){ loadDemo(); }
 render();
 </script>
 </body>
