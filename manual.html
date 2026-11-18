@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Manual · Pauta de Prazos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap">
+<style>
+:root{
+  --paper:#f4f3f0; --sheet:#fffefb; --ink:#1b1f2a; --line:#dcd7cd;
+  --toga:#161a24; --toga-fg:#ffffff; --toga-muted:#a9a49a;
+  --gold:#9c7a35; --gold-bright:#c9a45a; --gold-soft:#f1e8d4;
+  --rubi:#9e1f34;
+  --f:"Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#0f1117; --sheet:#171a22; --ink:#ffffff; --line:#2c2f39; --toga:#0a0c11; --gold:#d2ae66; --gold-soft:#2b2518; color-scheme:dark; }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:18px/1.6 var(--f)}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.inner{max-width:860px;margin:0 auto}
+header{background:var(--toga);color:var(--toga-fg);padding-block:24px 20px;border-bottom:3px double var(--gold-bright)}
+h1{font:600 36px/1.1 var(--f);margin:0}
+.motto{font:italic 500 20px/1.3 "Cormorant Garamond", Garamond, Georgia, serif;color:var(--toga-muted);margin-top:4px}
+.motto b{color:var(--gold-bright);font-weight:600}
+.voltar{display:inline-block;margin-top:14px;color:var(--toga-fg);border:1px solid var(--gold-bright);padding:6px 14px;border-radius:3px;text-decoration:none;font-weight:600;font-size:16px}
+.voltar:focus-visible,a:focus-visible{outline:2px solid var(--gold-bright);outline-offset:2px}
+main{padding-block:24px 60px;display:flex;flex-direction:column;gap:18px}
+nav.indice{background:var(--sheet);border:1px solid var(--line);border-radius:3px;padding:14px 18px}
+nav.indice ol{margin:6px 0 0;padding-left:22px;columns:2;column-gap:28px}
+nav.indice a{color:var(--ink)}
+@media (max-width:600px){nav.indice ol{columns:1}}
+section{background:var(--sheet);border:1px solid var(--line);border-radius:3px;padding:16px 20px}
+h2{display:flex;align-items:center;gap:12px;font:600 24px/1.25 var(--f);margin:0 0 8px;text-wrap:balance}
+h2::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--gold),transparent)}
+h3{font:600 19px var(--f);margin:14px 0 4px}
+p{margin:6px 0}
+ul,ol{margin:6px 0;padding-left:24px}
+li{margin:4px 0}
+.btn{display:inline-block;font-weight:600;font-size:15px;border:1px solid var(--line);padding:0 8px;border-radius:3px;white-space:nowrap}
+.btn.p{background:var(--rubi);border-color:var(--rubi);color:#fff}
+.dica{border-left:3px solid var(--gold);background:var(--gold-soft);padding:8px 12px;margin:10px 0;border-radius:2px}
+table{border-collapse:collapse;width:100%;font-size:16px}
+td,th{border-top:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-weight:600}
+.tabela{overflow-x:auto}
+footer{text-align:center;font-size:15px;opacity:.85}
+</style>
+</head>
+<body>
+<header class="gutter">
+  <div class="inner">
+    <h1>Manual da Pauta de Prazos</h1>
+    <div class="motto"><b>Dormientibus non succurrit ius.</b> O Direito não socorre aos que dormem.</div>
+    <a class="voltar" href="painel-prazos.html">← Voltar ao painel</a>
+  </div>
+</header>
+
+<main class="gutter">
+ <div class="inner" style="display:flex;flex-direction:column;gap:18px">
+
+  <nav class="indice" aria-label="Índice">
+    <b>Neste manual</b>
+    <ol>
+      <li><a href="#acesso">Primeiro acesso</a></li>
+      <li><a href="#config">Configurações</a></li>
+      <li><a href="#buscar">Buscar publicações</a></li>
+      <li><a href="#pauta">Lendo a pauta</a></li>
+      <li><a href="#cartao">O cartão de cada publicação</a></li>
+      <li><a href="#manual">Lançar um prazo à mão</a></li>
+      <li><a href="#contagem">Como o prazo é contado</a></li>
+      <li><a href="#seguranca">Segurança e cuidados</a></li>
+    </ol>
+  </nav>
+
+  <section id="acesso">
+    <h2>1. Primeiro acesso</h2>
+    <ol>
+      <li>Abra <b>arthursantoro.github.io/sistemaMari</b> e entre com seu <b>e-mail e senha</b>.</li>
+      <li>Na primeira vez, o painel pede para <b>confirmar o e-mail</b>: clique em <span class="btn">Enviar link de confirmação</span>, abra o e-mail (veja o spam), clique no link e volte em <span class="btn p">Já confirmei</span>. É uma vez só.</li>
+      <li>Depois de entrar, cada aparelho fica conectado. Ele só pede a senha de novo se você clicar em <b>Sair</b> ou ficar <b>7 dias sem usar</b> naquele aparelho.</li>
+    </ol>
+    <h3>Usar como aplicativo no celular</h3>
+    <ul>
+      <li><b>iPhone:</b> no Safari, botão de compartilhar → <i>Adicionar à Tela de Início</i>.</li>
+      <li><b>Android:</b> no Chrome, menu ⋮ → <i>Adicionar à tela inicial</i>.</li>
+    </ul>
+    <div class="dica">Em computador de outra pessoa ou do fórum, marque <b>"Computador compartilhado"</b> na tela de entrada: a sessão termina quando o navegador fecha.</div>
+  </section>
+
+  <section id="config">
+    <h2>2. Configurações</h2>
+    <p>Botão <span class="btn">Configurações</span>, no topo. Tudo o que você salva aqui vale para todas as advogadas do escritório.</p>
+    <ul>
+      <li><b>Advogados acompanhados:</b> nome (opcional), número da OAB e UF. Use <span class="btn">+ Adicionar advogado</span> para incluir mais de um; o painel busca as publicações de todos.</li>
+      <li><b>Buscar últimos (dias):</b> quantos dias para trás a busca olha (padrão: 15).</li>
+      <li><b>Calendário de feriados:</b> "TJMS · Comarca de Campo Grande" já vem escolhido.</li>
+      <li><b>Prazo padrão:</b> número de dias usado quando a publicação não diz o prazo. Vazio = a publicação fica em "sem prazo definido" para você preencher.</li>
+      <li><b>Feriados e suspensões locais:</b> um por linha, no formato <code>2027-03-10 Motivo</code>. Para um período: <code>2027-03-10..2027-03-12 Motivo</code>. Comece com <code>PF</code> para ponto facultativo (aparece no calendário, mas conta como dia útil, por segurança).</li>
+      <li><b>Ver todos os feriados já programados:</b> lista o ano atual e o próximo, já calculados (Carnaval, Semana Santa, Corpus Christi, feriados do TJMS, aniversário de Campo Grande, recesso).</li>
+      <li><b>Ver histórico de alterações do escritório:</b> tudo o que foi feito, por quem e quando.</li>
+      <li><b>Baixar cópia de segurança:</b> salva um arquivo com todos os prazos e o histórico. Ele contém dados sigilosos: guarde em local protegido e não envie por WhatsApp ou e-mail.</li>
+      <li><b>Sair:</b> desconecta e apaga deste aparelho os dados baixados.</li>
+    </ul>
+  </section>
+
+  <section id="buscar">
+    <h2>3. Buscar publicações</h2>
+    <p>Clique em <span class="btn p">Buscar publicações</span>. O painel consulta o <b>DJEN</b> (Diário de Justiça Eletrônico Nacional, do CNJ) pelo número de cada OAB cadastrada e traz as intimações.</p>
+    <ul>
+      <li>Publicação que já está no painel não é duplicada.</li>
+      <li>Publicação que você excluiu não volta numa busca nova.</li>
+      <li>O prazo é <b>lido do próprio texto</b> (ex.: "no prazo de 15 (quinze) dias") e aparece grifado para você conferir.</li>
+      <li>Se aparecer "o CNJ limitou as consultas", espere um minuto e clique de novo.</li>
+    </ul>
+    <div class="dica">Faça a busca uma vez por dia, de preferência pela manhã.</div>
+  </section>
+
+  <section id="pauta">
+    <h2>4. Lendo a pauta</h2>
+    <ul>
+      <li><b>Resumo (os quatro números):</b> vencidos ou vencendo hoje, nesta semana, na próxima, e sem prazo definido. Clique em um para ir direto à lista.</li>
+      <li><b>Pauta das próximas duas semanas:</b> cada quadrado é um dia, com quantos prazos vencem nele. Dias riscados não têm expediente (fim de semana, feriado).</li>
+      <li><b>Listas:</b> Vencidos · Esta semana · Próxima semana · Mais adiante · Sem prazo definido · Cumpridos e arquivados · Lixeira.</li>
+      <li><b>Filtro de advogado:</b> com duas ou mais OABs aparece "Todos os advogados", para ver só os de um.</li>
+    </ul>
+    <h3>O carimbo do vencimento</h3>
+    <div class="tabela"><table>
+      <tr><th>Como aparece</th><th>Significa</th></tr>
+      <tr><td>Moldura vermelha, inclinada, "PRAZO FATAL"</td><td>Vence hoje ou já venceu</td></tr>
+      <tr><td>Moldura ocre</td><td>Vence em até 2 dias</td></tr>
+      <tr><td>Moldura normal, "VENCIMENTO"</td><td>Prazo em dia</td></tr>
+      <tr><td>Moldura verde</td><td>Cumprido ou arquivado</td></tr>
+      <tr><td>Moldura tracejada</td><td>Ainda sem prazo: informe os dias</td></tr>
+    </table></div>
+  </section>
+
+  <section id="cartao">
+    <h2>5. O cartão de cada publicação</h2>
+    <ul>
+      <li><b>Prazo (dias):</b> corrija ou preencha o número de dias. O vencimento é recalculado na hora.</li>
+      <li><b>Cível · dias úteis / Criminal · dias corridos:</b> o painel escolhe pela classe do processo; troque se estiver errado.</li>
+      <li><b>Réu preso / urgente</b> (só em criminal): marque quando o prazo corre também no recesso. O painel já marca sozinho quando o texto fala em réu preso ou medida protetiva.</li>
+      <li><span class="btn">Ver contagem</span>: mostra a disponibilização, a publicação, o 1º dia e cada dia contado, com a regra usada.</li>
+      <li><span class="btn">Ver texto da publicação</span>: o texto completo, como saiu no Diário.</li>
+      <li><span class="btn">Abrir no tribunal</span>: abre o documento no sistema do tribunal.</li>
+      <li><span class="btn">Histórico</span>: quem criou, alterou, cumpriu ou excluiu, com data, hora e o que mudou.</li>
+      <li><span class="btn">Marcar cumprido</span>: tira da pauta e guarda em "Cumpridos". <span class="btn">Reabrir</span> desfaz.</li>
+      <li><span class="btn">Sem prazo / arquivar</span>: para publicações que não pedem providência (ciência, arquive-se).</li>
+      <li><span class="btn">Excluir</span>: pede confirmação e manda para a <b>Lixeira</b>, no fim da página, de onde dá para <span class="btn">Restaurar</span>.</li>
+    </ul>
+    <div class="dica">Se aparecer o aviso <b>"Não salvei a alteração… outra pessoa alterou ao mesmo tempo"</b>, outra advogada mexeu no mesmo prazo no mesmo instante. A tela já mostra a versão dela: confira e refaça a sua alteração, se ainda for necessária.</div>
+  </section>
+
+  <section id="manual">
+    <h2>6. Lançar um prazo à mão</h2>
+    <p>Para algo que não veio pelo DJEN: <span class="btn">Adicionar manualmente</span> → número do processo, <b>data de disponibilização</b>, prazo em dias, cível ou criminal, e um resumo. Se você só sabe a data da <b>publicação</b>, informe o dia útil anterior a ela.</p>
+  </section>
+
+  <section id="contagem">
+    <h2>7. Como o prazo é contado</h2>
+    <h3>Cível (dias úteis)</h3>
+    <ul>
+      <li>Publicação = 1º dia útil depois da disponibilização no Diário (Lei 11.419/2006, art. 4º, §3º).</li>
+      <li>O prazo começa no dia útil seguinte à publicação e conta só dias úteis (CPC, arts. 219 e 224).</li>
+      <li>Suspenso de 20/12 a 20/01 (CPC, art. 220).</li>
+    </ul>
+    <h3>Criminal (dias corridos)</h3>
+    <ul>
+      <li>Conta sábado, domingo e feriado (CPP, art. 798).</li>
+      <li>Só começa em dia útil: publicou na sexta, começa na segunda (Súmula 310/STF).</li>
+      <li>Se vencer em dia sem expediente, passa para o próximo dia útil (art. 798, §3º).</li>
+      <li>Suspenso no recesso, <b>menos</b> com réu preso, Maria da Penha ou medida urgente (art. 798-A).</li>
+    </ul>
+    <p>Calendário: feriados nacionais, do TJMS (Portaria 983/2025 e Lei estadual 3.056/2005) e de Campo Grande. Prazo em dobro: lance o número de dias já dobrado.</p>
+    <div class="dica"><b>O painel é uma ferramenta de conferência.</b> O prazo fatal deve sempre ser confirmado no processo.</div>
+  </section>
+
+  <section id="seguranca">
+    <h2>8. Segurança e cuidados</h2>
+    <ul>
+      <li>Só entram as contas liberadas pelo administrador. Para incluir outra advogada, peça ao Arthur.</li>
+      <li><b>Esqueceu a senha?</b> Na tela de entrada, digite o e-mail e clique em <span class="btn">Esqueci a senha</span>. O link vale por pouco tempo e só uma vez.</li>
+      <li><b>Perdeu o celular?</b> Troque a senha: isso desconecta os outros aparelhos.</li>
+      <li>Proteja o celular com senha ou biometria e não compartilhe a sua senha do painel.</li>
+      <li>Nada é apagado de vez pelo site: excluídos ficam na Lixeira, e todo o histórico fica registrado.</li>
+    </ul>
+  </section>
+
+  <footer>Feito para a Dra. Mariana · Pauta de Prazos</footer>
+ </div>
+</main>
+</body>
+</html>
