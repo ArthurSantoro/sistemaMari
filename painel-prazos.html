@@ -199,7 +199,10 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
 <div class="wrap gutter">
  <div class="inner" style="display:flex;flex-direction:column;gap:22px;width:100%">
   <div class="toolbar">
-    <div class="status" id="status" role="status"></div>
+    <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+      <div class="status" id="syncInfo" hidden></div>
+      <div class="status" id="status" role="status"></div>
+    </div>
     <div class="actions">
       <select id="fltAdv" aria-label="Filtrar por advogado" hidden></select>
       <button class="primary" id="btnFetch">Buscar publicações</button>
@@ -262,12 +265,29 @@ button.primary{background:#9e1f34;border-color:#9e1f34;color:#fff}@media (prefer
     <div class="hint">Já estão incluídos: feriados nacionais, Carnaval e Cinzas, Quinta e Sexta-feira Santa, Corpus Christi, 11/08 (Cursos Jurídicos), 26/08 (Aniversário de Campo Grande), 8/12 (Dia da Justiça), 1º a 6/01 e o recesso de 20/12 a 20/01. Comece a linha com <code>PF</code> para ponto facultativo: ele aparece no calendário, mas conta como dia útil, para o prazo nunca ficar mais longo do que deveria. Quando o TJMS publicar a portaria de 2027, acrescente aqui o Dia do Servidor e os pontos facultativos.</div>
     <details class="hols" id="holsBox"><summary>Ver todos os feriados já programados</summary><div id="holList"></div></details>
     <div class="foot">
+      <span id="acctInfo" class="hint" hidden></span>
+      <button type="button" id="btnLogout" class="small" hidden>Sair</button>
       <button type="button" id="btnExport" class="small">Exportar backup</button>
-      <label class="btn small" for="fileImport">Importar backup</label>
+      <label class="btn small" for="fileImport" id="lblImport">Importar backup</label>
       <input type="file" id="fileImport" accept="application/json" hidden>
       <span style="flex:1"></span>
       <button value="cancel" formnovalidate>Cancelar</button>
       <button class="primary" value="ok" id="btnSaveCfg">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgLogin">
+  <form id="formLogin">
+    <h3>Entrar no escritório</h3>
+    <div class="hint">Use o e-mail e a senha cadastrados. Os prazos ficam iguais no celular e no computador de todas as advogadas do escritório.</div>
+    <div class="row"><label>E-mail<input id="loginEmail" type="email" autocomplete="username" required></label></div>
+    <div class="row"><label>Senha<input id="loginSenha" type="password" autocomplete="current-password" required></label></div>
+    <div class="hint" id="loginMsg" role="alert"></div>
+    <div class="foot">
+      <button type="button" class="small" id="btnReset">Esqueci a senha</button>
+      <span style="flex:1"></span>
+      <button class="primary" id="btnLogin">Entrar</button>
     </div>
   </form>
 </dialog>
@@ -416,7 +436,9 @@ function load(){
   applyCalendar();
 }
 function applyCalendar(){ holCache = {}; customDays = parseCustom(state.settings.feriados); }
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){ setStatus("Não consegui salvar no navegador: "+e.message); } }
+function saveLocal(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){ setStatus("Não consegui salvar no navegador: "+e.message); } }
+// salva no aparelho e, se a sincronização estiver ligada, envia para o banco online
+function save(){ saveLocal(); if (window.syncPush) window.syncPush(); }
 
 function htmlToText(html){
   const doc = new DOMParser().parseFromString(html||"", "text/html");
@@ -756,6 +778,148 @@ $("fileImport").onchange = async e => {
 load();
 if (!Object.keys(state.pubs).length && !getAdvs().length){ loadDemo(); }
 render();
+</script>
+<script type="module">
+/* ================= sincronização online (Firebase) =================
+   Cole aqui o objeto firebaseConfig do console do Firebase.
+   Enquanto for null, o painel funciona só neste aparelho, como antes. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDb_IlyrnVgtTaEErGupE3Apy1_3WW2wZo",
+  authDomain: "pauta-de-prazos.firebaseapp.com",
+  projectId: "pauta-de-prazos",
+  storageBucket: "pauta-de-prazos.firebasestorage.app",
+  messagingSenderId: "11001205820",
+  appId: "1:11001205820:web:4c073b17b089636f6b9f39"
+};
+
+if (FIREBASE_CONFIG) startSync().catch(e => banner("Não consegui iniciar a sincronização: " + e.message, "err"));
+
+async function startSync(){
+  const B = "https://www.gstatic.com/firebasejs/10.12.2/";
+  const [{initializeApp}, A, F] = await Promise.all([
+    import(B+"firebase-app.js"), import(B+"firebase-auth.js"), import(B+"firebase-firestore.js")
+  ]);
+  const app = initializeApp(FIREBASE_CONFIG);
+  const auth = A.getAuth(app);
+  let db;
+  try { db = F.initializeFirestore(app, {localCache: F.persistentLocalCache({tabManager: F.persistentMultipleTabManager()})}); }
+  catch(e){ db = F.getFirestore(app); }
+  const OFFICE = F.doc(db, "escritorio", "principal");
+  const PUBS = F.collection(db, "escritorio", "principal", "pubs");
+
+  // com o banco online, o backup manual não é mais necessário
+  $("btnExport").hidden = true; $("lblImport").hidden = true;
+
+  const SKEYS = ["advs","dias","padrao","perfil","feriados"];
+  const pick = s => JSON.stringify(Object.fromEntries(SKEYS.map(k => [k, s[k] ?? null])));
+  let unsubs = [], synced = {settings:null, pubs:{}}, gotSettings = false, gotPubs = false, ready = false;
+  const syncInfo = $("syncInfo");
+  const showSync = (txt) => { syncInfo.hidden = !txt; syncInfo.textContent = txt || ""; };
+
+  // envia só o que mudou desde a última sincronização
+  window.syncPush = async () => {
+    if (!ready || state.demo) return;
+    const ops = [];
+    const st = pick(state.settings);
+    if (st !== synced.settings){ synced.settings = st; ops.push(b => b.set(OFFICE, JSON.parse(st))); }
+    for (const [id, p] of Object.entries(state.pubs)){
+      const j = JSON.stringify(p);
+      if (synced.pubs[id] !== j){ synced.pubs[id] = j; ops.push(b => b.set(F.doc(PUBS, id), JSON.parse(j))); }
+    }
+    for (const id of Object.keys(synced.pubs)){
+      if (!state.pubs[id]){ delete synced.pubs[id]; ops.push(b => b.delete(F.doc(PUBS, id))); }
+    }
+    for (let i = 0; i < ops.length; i += 400){
+      const b = F.writeBatch(db);
+      ops.slice(i, i+400).forEach(op => op(b));
+      try { await b.commit(); }
+      catch(e){ showSync("Não consegui salvar online: " + traduz(e)); }
+    }
+  };
+
+  function maybeReady(){
+    if (ready || !gotSettings || !gotPubs) return;
+    ready = true;
+    window.syncPush(); // envia o que existia só neste aparelho (primeiro uso)
+  }
+
+  function subscribe(){
+    unsubs.push(F.onSnapshot(OFFICE, {includeMetadataChanges:true}, snap => {
+      if (snap.exists()){
+        const remote = snap.data();
+        SKEYS.forEach(k => { if (remote[k] !== null && remote[k] !== undefined) state.settings[k] = remote[k]; });
+        delete state.settings.oab;
+        synced.settings = pick(state.settings);
+        applyCalendar();
+      }
+      gotSettings = true; saveLocal(); render(); maybeReady();
+      showSync(snap.metadata.fromCache ? "Sem internet no momento: as mudanças são enviadas quando a conexão voltar." : "Sincronizado com o escritório.");
+    }, err => showSync("Sem acesso aos dados do escritório: " + traduz(err))));
+
+    unsubs.push(F.onSnapshot(PUBS, snap => {
+      const remote = {};
+      snap.forEach(d => remote[d.id] = d.data());
+      const firstLoad = !gotPubs;
+      gotPubs = true;
+      if (firstLoad && !snap.size && !state.demo && Object.keys(state.pubs).length){
+        // banco vazio e este aparelho já tinha prazos: mantém e envia
+        maybeReady(); return;
+      }
+      if (snap.size || !state.demo){
+        state.pubs = remote; state.demo = false;
+        synced.pubs = Object.fromEntries(Object.entries(remote).map(([id,p]) => [id, JSON.stringify(p)]));
+      }
+      saveLocal(); render(); maybeReady();
+    }, err => showSync("Sem acesso aos dados do escritório: " + traduz(err))));
+  }
+
+  function traduz(e){
+    const c = (e && e.code) || "";
+    if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found") || c.includes("invalid-email")) return "e-mail ou senha incorretos.";
+    if (c.includes("too-many-requests")) return "muitas tentativas. Espere alguns minutos e tente de novo.";
+    if (c.includes("network")) return "sem conexão com a internet.";
+    if (c.includes("permission-denied")) return "este e-mail não tem permissão para ver os prazos do escritório.";
+    return (e && e.message) || "erro desconhecido.";
+  }
+
+  // login
+  const dlg = $("dlgLogin");
+  dlg.addEventListener("cancel", ev => ev.preventDefault()); // não fecha com Esc enquanto não entrar
+  $("formLogin").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    $("loginMsg").textContent = "Entrando…"; $("btnLogin").disabled = true;
+    try { await A.signInWithEmailAndPassword(auth, $("loginEmail").value.trim(), $("loginSenha").value); $("loginMsg").textContent = ""; }
+    catch(e){ $("loginMsg").textContent = "Não foi possível entrar: " + traduz(e); }
+    finally { $("btnLogin").disabled = false; }
+  });
+  $("btnReset").onclick = async () => {
+    const email = $("loginEmail").value.trim();
+    if (!email){ $("loginMsg").textContent = "Digite o seu e-mail acima e clique de novo em Esqueci a senha."; return; }
+    try { await A.sendPasswordResetEmail(auth, email); $("loginMsg").textContent = "Enviamos um link para criar uma nova senha. Confira o e-mail (e a caixa de spam)."; }
+    catch(e){ $("loginMsg").textContent = "Não foi possível enviar: " + traduz(e); }
+  };
+  $("btnLogout").onclick = async () => { $("dlgConfig").close(); await A.signOut(auth); };
+
+  let wasLogged = false;
+  A.onAuthStateChanged(auth, user => {
+    unsubs.forEach(u => u()); unsubs = [];
+    gotSettings = gotPubs = ready = false; synced = {settings:null, pubs:{}};
+    if (user){
+      if (dlg.open) dlg.close();
+      $("acctInfo").hidden = false; $("acctInfo").textContent = "Conectada como " + user.email;
+      $("btnLogout").hidden = false;
+      showSync("Conectando ao escritório…");
+      subscribe();
+    } else {
+      $("acctInfo").hidden = true; $("btnLogout").hidden = true;
+      showSync("");
+      // só ao clicar em Sair: limpa os dados deste aparelho (no primeiro acesso, mantém para enviar ao banco)
+      if (wasLogged){ state.pubs = {}; state.settings.advs = []; saveLocal(); loadDemo(); render(); }
+      if (!dlg.open) dlg.showModal();
+    }
+    wasLogged = !!user;
+  });
+}
 </script>
 </body>
 </html>

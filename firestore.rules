@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Só os e-mails desta lista podem ler e alterar os prazos do escritório.
+    // Troque pelos e-mails reais (em letras minúsculas) e acrescente outros separando por vírgula.
+    function membro() {
+      return request.auth != null
+        && request.auth.token.email in ['EMAIL_DA_MARIANA', 'EMAIL_DA_OUTRA_ADVOGADA'];
+    }
+    match /escritorio/{doc=**} {
+      allow read, write: if membro();
+    }
+  }
+}
