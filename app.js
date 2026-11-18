@@ -335,7 +335,7 @@ function render(){
     section("g-nodue", "Sem prazo definido · confira e informe o prazo", g.nodue, "Todas as publicações têm prazo definido.") +
     (g.done.length ? section("g-done","Cumpridos e arquivados", g.done, "") : "") +
     (lixeira.length ? `<section class="group" id="g-lixo"><h2>Lixeira <small>${lixeira.length} ${lixeira.length===1?"publicação":"publicações"} · dá para restaurar</small></h2>` +
-      lixeira.map(p => `<article class="card done"><div class="due"><div class="stamp"><span class="lbl">Excluída</span><span class="dt">${p.excluido.em ? esc(new Date(p.excluido.em).toLocaleDateString("pt-BR").slice(0,5)) : ""}</span><span class="left">${esc(p.excluido.por||"")}</span></div></div>
+      lixeira.map(p => `<article class="card done"><div class="due"><div class="stamp"><span class="lbl">Excluída</span><span class="dt">${p.excluido.em ? esc(new Date(p.excluido.em).toLocaleDateString("pt-BR").slice(0,5)) : ""}</span><span class="left" title="${esc(p.excluido.por||"")}">por ${esc(String(p.excluido.por||"").split("@")[0])}</span></div></div>
         <div class="body"><div class="proc"><span class="autos">Autos nº</span>${esc(p.processo)}</div><div class="meta">${esc(p.tipoDoc)} · ${esc(p.classe||"")}</div>
         <div class="ctrl"><button class="small" data-act="restaurar" data-id="${esc(p.id)}">Restaurar</button><button class="small" data-act="hist" data-id="${esc(p.id)}">Histórico</button></div>
         <div class="hist" id="hs-${esc(p.id)}" hidden></div></div></article>`).join("") + `</section>` : "");
