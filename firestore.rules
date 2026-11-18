@@ -1,14 +1,119 @@
 rules_version = '2';
+
+// Regras de segurança da Pauta de Prazos (Cloud Firestore).
+// Cole este arquivo inteiro em Firestore Database → Regras → Publicar.
+//
+// Quem acessa: só contas com e-mail confirmado E cadastradas na coleção "membros"
+// (um documento por pessoa, com o UID dela como ID; criado pelo administrador no console).
+// Nada de e-mails neste arquivo: ele fica num repositório público.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Só os e-mails desta lista podem ler e alterar os prazos do escritório.
-    // Troque pelos e-mails reais (em letras minúsculas) e acrescente outros separando por vírgula.
-    function membro() {
-      return request.auth != null
-        && request.auth.token.email in ['EMAIL_DA_MARIANA', 'EMAIL_DA_OUTRA_ADVOGADA'];
+
+    // ---------- quem é quem ----------
+    function logado() {
+      return request.auth != null && request.auth.token.email_verified == true;
     }
-    match /escritorio/{doc=**} {
-      allow read, write: if membro();
+    function membro() {
+      return logado() && exists(/databases/$(database)/documents/membros/$(request.auth.uid));
+    }
+
+    // ---------- integridade ----------
+    // Cada gravação aumenta a versão em 1: se duas pessoas alterarem o mesmo registro
+    // ao mesmo tempo, a segunda é recusada em vez de sobrescrever a primeira em silêncio.
+    function versaoAnterior() {
+      return resource == null ? 0 : resource.data.get('versao', 0);
+    }
+    function novaVersao() {
+      return request.resource.data.versao == versaoAnterior() + 1;
+    }
+    // Quem gravou é sempre a pessoa conectada (não dá para assinar em nome de outra).
+    function assinado() {
+      return request.resource.data.atualizadoPor == request.auth.token.email;
+    }
+    // Toda gravação precisa vir junto (mesmo lote) com o seu registro de auditoria.
+    function auditada(alvo) {
+      return existsAfter(/databases/$(database)/documents/escritorio/principal/auditoria/$(alvo + '__v' + string(request.resource.data.versao)));
+    }
+
+    function textoOpcional(v, max) {
+      return v == null || (v is string && v.size() <= max);
+    }
+
+    function configValida() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['advs', 'dias', 'padrao', 'perfil', 'feriados', 'excluidas', 'versao', 'atualizadoPor'])
+        && (d.get('advs', null) == null || (d.advs is list && d.advs.size() <= 50))
+        && (d.get('dias', null) == null || (d.dias is number && d.dias >= 1 && d.dias <= 60))
+        && textoOpcional(d.get('padrao', null), 5)
+        && (d.get('perfil', null) == null || d.perfil in ['tjms-cg', 'tjms', 'nacional'])
+        && textoOpcional(d.get('feriados', null), 20000)
+        && (d.get('excluidas', null) == null || (d.excluidas is list && d.excluidas.size() <= 3000));
+    }
+
+    function pubValida(pubId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['id', 'chave', 'origemDados', 'advs', 'processo', 'disp', 'tribunal', 'orgao',
+                               'classe', 'tipoDoc', 'link', 'texto', 'prazoDias', 'tipo', 'criminal', 'origem',
+                               'det', 'status', 'tipoManual', 'urgente', 'excluido', 'versao', 'atualizadoPor'])
+        && d.id == pubId
+        && d.processo is string && d.processo.size() <= 120
+        && d.disp is string && d.disp.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.status in ['aberto', 'cumprido', 'arquivado']
+        && d.get('tipo', 'uteis') in ['uteis', 'corridos']
+        && (d.get('prazoDias', null) == null || (d.prazoDias is number && d.prazoDias >= 1 && d.prazoDias <= 365))
+        && textoOpcional(d.get('texto', null), 20000)
+        && textoOpcional(d.get('chave', null), 1000)
+        && (d.get('link', null) == null || d.link == '' || (d.link is string && d.link.size() <= 2000 && d.link.matches('^https://.*')))
+        && (d.get('advs', null) == null || (d.advs is list && d.advs.size() <= 50))
+        && (d.get('excluido', null) == null || d.excluido is map);
+    }
+
+    function auditoriaValida(evId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['acao', 'alvo', 'processo', 'antes', 'depois', 'versao', 'por', 'uid', 'em'])
+        && d.por == request.auth.token.email
+        && d.uid == request.auth.uid
+        && d.em == request.time
+        && d.acao is string && d.acao.size() <= 40
+        && d.alvo is string && evId == d.alvo + '__v' + string(d.versao)
+        && (d.get('antes', null) == null || d.antes is map)
+        && (d.get('depois', null) == null || d.depois is map);
+    }
+
+    // ---------- coleções ----------
+
+    // Lista de pessoas liberadas. Só o administrador mexe, pelo console do Firebase.
+    match /membros/{uid} {
+      allow read: if logado() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /escritorio/{office} {
+      allow read: if membro() && office == 'principal';
+      allow create, update: if membro() && office == 'principal'
+        && configValida() && novaVersao() && assinado() && auditada('config');
+      allow delete: if false;
+
+      // Publicações e prazos: nunca são apagados de vez pelo site (exclusão vai para a lixeira).
+      match /pubs/{pubId} {
+        allow read: if membro() && office == 'principal';
+        allow create, update: if membro() && office == 'principal'
+          && pubValida(pubId) && novaVersao() && assinado() && auditada(pubId);
+        allow delete: if false;
+      }
+
+      // Histórico de alterações: só acrescenta; ninguém altera nem apaga pelo site.
+      match /auditoria/{evId} {
+        allow read: if membro() && office == 'principal';
+        allow create: if membro() && office == 'principal' && auditoriaValida(evId);
+        allow update, delete: if false;
+      }
+    }
+
+    // Qualquer outro caminho: negado.
+    match /{caminho=**} {
+      allow read, write: if false;
     }
   }
 }
