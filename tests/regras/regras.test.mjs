@@ -108,6 +108,67 @@ test("campos extras e link javascript: são recusados", async () => {
   await assertFails(gravaComAuditoria(db, MEMBRO, "djen-1", pub({ status: "qualquer" }), 2));
 });
 
+// ---- uso normal: formato exato que o painel grava (sync.js) não pode ser bloqueado ----
+const pubCompleta = (extra = {}) => Object.assign({
+  id: "djen-9", chave: "123|2026-11-18|Intimação|texto", origemDados: "DJEN", advs: ["OAB/MS 12345"],
+  processo: "0000009-00.2026.8.12.0001", disp: "2026-11-18", tribunal: "TJMS", orgao: "1ª Vara Cível",
+  classe: "Procedimento Comum Cível", tipoDoc: "Intimação", link: "https://esaj.tjms.jus.br/doc", texto: "prazo de 15 dias",
+  prazoDias: 15, tipo: "uteis", criminal: false, origem: "texto",
+  det: { dias: 15, horas: false, tipo: "uteis", trecho: { antes: "", achado: "prazo de 15 dias", depois: "" } },
+  status: "aberto", tipoManual: null, urgente: null, excluido: null
+}, extra);
+
+test("painel: importa publicação nova do DJEN (versão 1)", async () => {
+  await assertSucceeds(gravaComAuditoria(dbDe(MEMBRO), MEMBRO, "djen-9", pubCompleta(), 1));
+});
+
+test("painel: lançamento manual com campos vazios", async () => {
+  const id = "man-0b7a2c1e-1111-4222-8333-944445555666";
+  await assertSucceeds(gravaComAuditoria(dbDe(MEMBRO), MEMBRO, id, pubCompleta({
+    id, chave: id, origemDados: "Manual", advs: null, tribunal: "", orgao: "", classe: "", tipoDoc: "Lançamento manual",
+    link: "", det: null, origem: "manual", prazoDias: 10, tipo: "corridos"
+  }), 1));
+});
+
+test("painel: documento antigo (sem versão) passa a ter versão 1", async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), "escritorio/principal/pubs/djen-9"), pubCompleta());
+  });
+  await assertSucceeds(gravaComAuditoria(dbDe(MEMBRO), MEMBRO, "djen-9", pubCompleta({ status: "cumprido" }), 1));
+});
+
+test("painel: manda para a lixeira e restaura", async () => {
+  const db = dbDe(MEMBRO);
+  await gravaComAuditoria(db, MEMBRO, "djen-9", pubCompleta(), 1);
+  await assertSucceeds(gravaComAuditoria(db, MEMBRO, "djen-9", pubCompleta({ excluido: { em: "2026-11-18T20:00:00.000Z", por: MEMBRO.email } }), 2));
+  await assertSucceeds(gravaComAuditoria(db, MEMBRO, "djen-9", pubCompleta(), 3));
+});
+
+test("painel: salva configurações (com auditoria) e recusa perfil inválido", async () => {
+  const db = dbDe(MEMBRO);
+  const cfg = (versao, extra = {}) => {
+    const b = writeBatch(db);
+    b.set(doc(db, "escritorio/principal"), Object.assign({
+      advs: [{ nome: "Mariana", oab: "12345", uf: "MS" }], dias: 15, padrao: "", perfil: "tjms-cg",
+      feriados: "2026-10-30 Dia do Servidor", excluidas: [], versao, atualizadoPor: MEMBRO.email
+    }, extra));
+    b.set(doc(db, `escritorio/principal/auditoria/config__v${versao}`), {
+      acao: "alterou configurações", alvo: "config", versao, processo: "", antes: null, depois: { dias: 15 },
+      por: MEMBRO.email, uid: MEMBRO.uid, em: serverTimestamp()
+    });
+    return b.commit();
+  };
+  await assertSucceeds(cfg(1));
+  await assertSucceeds(cfg(2));
+  await assertFails(cfg(3, { perfil: "qualquer" }));
+});
+
+test("membro lê o histórico; não membro não", async () => {
+  await gravaComAuditoria(dbDe(MEMBRO), MEMBRO, "djen-1", pub({ status: "cumprido" }), 2);
+  await assertSucceeds(getDocs(collection(dbDe(MEMBRO), "escritorio/principal/auditoria")));
+  await assertFails(getDocs(collection(dbDe(NAO_MEMBRO), "escritorio/principal/auditoria")));
+});
+
 test("outros caminhos do banco: negados", async () => {
   await assertFails(setDoc(doc(dbDe(MEMBRO), "outra/colecao"), { x: 1 }));
   await assertFails(getDoc(doc(dbDe(MEMBRO), "escritorio/outro")));

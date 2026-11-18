@@ -52,10 +52,21 @@ Não há servidor próprio, upload de documentos, envio de e-mails/notificaçõe
 
 - `node --test tests/calculo.test.mjs` — regras de contagem (cível, criminal, Súmula 310, recesso, réu preso)
   e detecção cível × criminal. **9 de 9 passando.**
-- `tests/regras/` — testes das regras do Firestore **no emulador** (sem login, não membro, e-mail não
-  confirmado, autopromoção, sobrescrita por versão antiga, gravação sem auditoria, assinatura falsa,
-  exclusão definitiva, alteração da auditoria, campos extras, link `javascript:`, caminhos fora do escopo).
-  Precisa de **Java 21+** (a máquina atual tem Java 8): ainda **não executados**.
+- `tests/regras/` — testes das regras do Firestore **no emulador local** (nunca em produção):
+  sem login, não membro, e-mail não confirmado, autopromoção a membro, sobrescrita por versão antiga,
+  gravação sem auditoria, assinatura em nome de outra pessoa, exclusão definitiva, alteração/remoção da
+  auditoria, campos extras, link `javascript:`, caminhos fora do escopo; e o uso normal com o formato exato
+  que o painel grava (importar do DJEN, lançamento manual, documento antigo sem versão, lixeira e
+  restauração, configurações, leitura do histórico). **18 de 18 passando.**
+  Requer Java 21+ (Temurin 21 instalado em `C:\Program Files\Eclipse Adoptium`). Para rodar:
+  ```
+  cd tests/regras
+  npm install
+  $env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-21.0.13.9-hotspot"; $env:Path="$env:JAVA_HOME\bin;$env:Path"
+  npm test
+  ```
+- **Não testado**: o painel completo (sync.js) gravando no Firebase real com as regras novas — depende de
+  login real e das configurações do console. Fazer o roteiro da seção "Publicar".
 
 ## Configuração no console (obrigatória antes de publicar as regras novas)
 
@@ -83,7 +94,6 @@ Não há servidor próprio, upload de documentos, envio de e-mails/notificaçõe
 | Retenção/eliminação de dados | Nada é apagado automaticamente. Política de guarda precisa ser definida pela responsável. |
 | Dados das publicações | Textos do DJEN podem conter dados pessoais de partes (são públicos no Diário, mas ficam guardados no banco do escritório). |
 | Aparelho perdido | Proteja o celular com senha/biometria; troque a senha da conta se perder o aparelho. |
-| Testes das regras no emulador | Pendentes (Java 21+). |
 
 ## Publicar
 
