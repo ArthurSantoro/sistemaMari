@@ -168,6 +168,8 @@ body, body *{font-variant-numeric:lining-nums tabular-nums!important}
 .hols .src{font-size:13px;opacity:.85}
 @media (max-width:560px){.hols ul{columns:1}}
 #fltAdv{max-width:260px}
+button.danger{background:#9e1f34;border-color:#9e1f34;color:#fff}
+.delask{font-weight:600}
 /* legibilidade: todos os textos na cor principal (branco no tema escuro, preto no claro), sem itálico */
 .wk-label,.proc .autos,.tag,.tag.ex,.cal span,.cal span.c i,.day .why,.day .d,.day .n,.day .n.hot,.sum b,.sum.danger b,.sum.warn b,.sum span,.meta,.hint,.status,.group .empty,h2,h2 small,details.law,details.law summary,.timeline .steps,.row label,.notice,footer.colophon,footer.colophon span,
 .stamp,.card.late .stamp,.card.today .stamp,.card.soon .stamp,.card.done .stamp,.card.nodue .stamp{color:var(--ink)!important}
@@ -493,6 +495,7 @@ async function fetchPubs(){
           total++;
           const texto = htmlToText(it.texto).slice(0, 20000);
           const chave = [it.numero_processo, it.data_disponibilizacao, it.tipoDocumento, texto.slice(0,300)].join("|");
+          if ((state.settings.excluidas || []).includes(chaveCurta(chave))) continue; // excluída pela usuária
           const existing = byChave.get(chave) || state.pubs["djen-"+it.id];
           if (existing){
             existing.advs = existing.advs || [];
@@ -659,6 +662,9 @@ function card(p){
         ${p.status==="aberto"
           ? `<button class="small" data-act="cumprido" data-id="${p.id}">Marcar cumprido</button><button class="small" data-act="arquivar" data-id="${p.id}">Sem prazo / arquivar</button>`
           : `<button class="small" data-act="reabrir" data-id="${p.id}">Reabrir</button>`}
+        ${confirmDel===p.id
+          ? `<span class="delask">Excluir de vez, para todas?</span><button class="small danger" data-act="delok" data-id="${p.id}">Sim, excluir</button><button class="small" data-act="delno" data-id="${p.id}">Cancelar</button>`
+          : `<button class="small" data-act="del" data-id="${p.id}">Excluir</button>`}
       </div>
       ${tl}
       <div class="fulltext" id="tx-${p.id}" hidden>${esc(p.texto)}</div>
@@ -677,12 +683,25 @@ function calRange(c){
   return out;
 }
 
+let confirmDel = null;
+// resumo curto e estável da "chave" de uma publicação (para a lista de excluídas não ficar grande)
+function chaveCurta(s){ let h1 = 5381, h2 = 52711; for (let i = 0; i < s.length; i++){ const ch = s.charCodeAt(i); h1 = (h1 * 33) ^ ch; h2 = (h2 * 33) ^ ch; } return (h1>>>0).toString(36) + (h2>>>0).toString(36) + s.length.toString(36); }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]"); if (!b || b.tagName==="INPUT" || b.tagName==="SELECT") return;
   const id = b.dataset.id, p = state.pubs[id];
   if (!p) return;
   if (b.dataset.act==="tl"){ const el=$("tl-"+id); el.hidden=!el.hidden; return; }
   if (b.dataset.act==="txt"){ const el=$("tx-"+id); el.hidden=!el.hidden; return; }
+  if (b.dataset.act==="del"){ confirmDel = id; render(); return; }
+  if (b.dataset.act==="delno"){ confirmDel = null; render(); return; }
+  if (b.dataset.act==="delok"){
+    // guarda a "marca" da publicação para ela não voltar na próxima busca no DJEN
+    const ex = state.settings.excluidas = (state.settings.excluidas || []);
+    const k = chaveCurta(p.chave || id); if (!ex.includes(k)) ex.push(k);
+    if (ex.length > 3000) ex.splice(0, ex.length - 3000);
+    delete state.pubs[id]; confirmDel = null;
+    save(); render(); setStatus(`Publicação ${p.processo} excluída.`); return;
+  }
   if (b.dataset.act==="cumprido") p.status="cumprido";
   if (b.dataset.act==="arquivar") p.status="arquivado";
   if (b.dataset.act==="reabrir") p.status="aberto";
@@ -810,7 +829,7 @@ async function startSync(){
   // com o banco online, o backup manual não é mais necessário
   $("btnExport").hidden = true; $("lblImport").hidden = true;
 
-  const SKEYS = ["advs","dias","padrao","perfil","feriados"];
+  const SKEYS = ["advs","dias","padrao","perfil","feriados","excluidas"];
   const pick = s => JSON.stringify(Object.fromEntries(SKEYS.map(k => [k, s[k] ?? null])));
   let unsubs = [], synced = {settings:null, pubs:{}}, gotSettings = false, gotPubs = false, ready = false;
   const syncInfo = $("syncInfo");
