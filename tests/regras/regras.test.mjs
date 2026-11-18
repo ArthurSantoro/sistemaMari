@@ -169,6 +169,32 @@ test("membro lê o histórico; não membro não", async () => {
   await assertFails(getDocs(collection(dbDe(NAO_MEMBRO), "escritorio/principal/auditoria")));
 });
 
+// Reproduz o caminho do sync.js: dados passam por uma limpeza via JSON antes de gravar.
+const limpa = o => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? null : v));
+function gravaComoPainel(db, user, id, dados, versao, horaDepoisDaLimpeza){
+  const aud = { acao: "marcou cumprido", alvo: id, versao, processo: dados.processo, antes: null, depois: { status: dados.status }, por: user.email, uid: user.uid };
+  const b = writeBatch(db);
+  b.set(doc(db, "escritorio/principal/pubs/" + id), limpa(Object.assign({}, dados, { versao, atualizadoPor: user.email })));
+  b.set(doc(db, `escritorio/principal/auditoria/${id}__v${versao}`),
+    horaDepoisDaLimpeza ? Object.assign(limpa(aud), { em: serverTimestamp() })   // correção atual
+                        : limpa(Object.assign({}, aud, { em: serverTimestamp() }))); // erro antigo
+  return b.commit();
+}
+
+test("painel: hora do servidor sobrevive à limpeza (regressão do erro 'Não salvei a alteração')", async () => {
+  const db = dbDe(MEMBRO);
+  await assertFails(gravaComoPainel(db, MEMBRO, "djen-1", pub({ status: "cumprido" }), 2, false));
+  await assertSucceeds(gravaComoPainel(db, MEMBRO, "djen-1", pub({ status: "cumprido" }), 2, true));
+});
+
+test("auditoria com hora inventada pelo cliente é recusada", async () => {
+  const db = dbDe(MEMBRO);
+  const b = writeBatch(db);
+  b.set(doc(db, "escritorio/principal/pubs/djen-1"), pub({ versao: 2, atualizadoPor: MEMBRO.email }));
+  b.set(doc(db, "escritorio/principal/auditoria/djen-1__v2"), { acao: "alterou", alvo: "djen-1", versao: 2, por: MEMBRO.email, uid: MEMBRO.uid, em: new Date("2020-01-01") });
+  await assertFails(b.commit());
+});
+
 test("outros caminhos do banco: negados", async () => {
   await assertFails(setDoc(doc(dbDe(MEMBRO), "outra/colecao"), { x: 1 }));
   await assertFails(getDoc(doc(dbDe(MEMBRO), "escritorio/outro")));

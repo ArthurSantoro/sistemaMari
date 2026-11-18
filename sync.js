@@ -110,9 +110,7 @@ async function startSync(){
       const b = F.writeBatch(db);
       grupo.forEach(t => {
         b.set(t.doc, limpa(t.dados));
-        b.set(F.doc(AUD, t.alvo + "__v" + t.versao), limpa(Object.assign({}, t.aud, {
-          alvo: t.alvo, versao: t.versao, por: userEmail, uid: auth.currentUser.uid, em: F.serverTimestamp()
-        })));
+        b.set(F.doc(AUD, t.alvo + "__v" + t.versao), registroAud(t));
         t.aplica(); // otimista; se o servidor recusar, o snapshot devolve o valor certo
       });
       try { await b.commit(); }
@@ -123,7 +121,7 @@ async function startSync(){
           for (const t of grupo){
             const b1 = F.writeBatch(db);
             b1.set(t.doc, limpa(t.dados));
-            b1.set(F.doc(AUD, t.alvo + "__v" + t.versao), limpa(Object.assign({}, t.aud, {alvo: t.alvo, versao: t.versao, por: userEmail, uid: auth.currentUser.uid, em: F.serverTimestamp()})));
+            b1.set(F.doc(AUD, t.alvo + "__v" + t.versao), registroAud(t));
             try { await b1.commit(); } catch(e2){ (e2.code === "permission-denied" ? conflitos : falhas).push(t.nome); }
           }
         }
@@ -137,7 +135,12 @@ async function startSync(){
   }
   // remove undefined (o Firestore não aceita) mantendo null
   const limpa = o => JSON.parse(JSON.stringify(o, (k, v) => v === undefined ? null : v), (k, v) => v);
-
+  // registro de auditoria: a hora do servidor (serverTimestamp) entra DEPOIS da limpeza,
+  // senão a limpeza (JSON) destrói o marcador e as regras recusam a gravação
+  const registroAud = t => Object.assign(
+    limpa(Object.assign({}, t.aud, {alvo: t.alvo, versao: t.versao, por: userEmail, uid: auth.currentUser.uid})),
+    {em: F.serverTimestamp()}
+  );
   async function recarregar(){
     try {
       const [s, ps] = await Promise.all([F.getDocFromServer(OFFICE), F.getDocsFromServer(PUBS)]);
